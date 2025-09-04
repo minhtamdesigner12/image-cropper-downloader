@@ -37,5 +37,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minhtamdesigner12/image-cropper-downloader.git"
+  },
+  "bugs": {
+    "url": "https://github.com/minhtamdesigner12/image-cropper-downloader/issues"
+  },
+  "homepage": "https://github.com/minhtamdesigner12/image-cropper-downloader#readme"
 }
