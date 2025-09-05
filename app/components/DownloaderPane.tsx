@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 
 const BACKEND_URL =
   process.env.NODE_ENV === "development"
@@ -7,11 +7,11 @@ const BACKEND_URL =
     : "https://image-cropper-downloader-production.up.railway.app/download";
 
 export default function DownloaderPane() {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [url, setUrl] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   async function handleDownload() {
-    if (!url) return alert("Paste a YouTube URL first");
+    if (!url) return alert("Paste a video URL first");
     setLoading(true);
 
     try {
@@ -25,8 +25,13 @@ export default function DownloaderPane() {
 
       const blob = await res.blob();
       const a = document.createElement("a");
+
+      const urlParts = url.split("/");
+      const fileName =
+        urlParts[urlParts.length - 1].split("?")[0] || "video.mp4";
+
       a.href = URL.createObjectURL(blob);
-      a.download = "video.mp4";
+      a.download = fileName.endsWith(".mp4") ? fileName : "video.mp4";
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -38,17 +43,17 @@ export default function DownloaderPane() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-md mx-auto mt-4">
       <input
         value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="Paste YouTube URL"
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+        placeholder="Paste video URL (YouTube, TikTok, Instagram, X.com)"
         className="w-full border px-2 py-1 rounded"
         disabled={loading}
       />
       <button
         onClick={handleDownload}
-        className="px-4 py-2 bg-green-600 text-white rounded"
+        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
         disabled={loading}
       >
         {loading ? "Processing…" : "Download Video"}

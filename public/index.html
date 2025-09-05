@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Video Downloader</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 50px; }
+    input { width: 400px; padding: 8px; margin-right: 10px; }
+    button { padding: 8px 16px; }
+  </style>
+</head>
+<body>
+  <h1>YouTube Video Downloader</h1>
+  <form id="downloadForm">
+    <input type="text" id="url" placeholder="Enter YouTube URL" required />
+    <button type="submit">Download</button>
+  </form>
+  <p id="status"></p>
+
+  <script>
+    const form = document.getElementById("downloadForm");
+    const status = document.getElementById("status");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const url = document.getElementById("url").value.trim();
+      if (!url) return alert("Please enter a URL");
+
+      status.textContent = "Downloading...";
+      try {
+        const response = await fetch("https://image-cropper-downloader-production.up.railway.app/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+
+        if (!response.ok) throw new Error("Download failed");
+
+        const blob = await response.blob();
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "video.mp4";
+        a.click();
+
+        status.textContent = "Download complete!";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Error: " + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
