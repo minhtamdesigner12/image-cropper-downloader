@@ -11,7 +11,7 @@ export default function DownloaderPane() {
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
-    if (!url) return alert("Paste a Facebook / TikTok / X / YouTube URL first");
+    if (!url) return alert("Paste a YouTube URL first");
     setLoading(true);
 
     try {
@@ -42,7 +42,7 @@ export default function DownloaderPane() {
       <input
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        placeholder="Paste Facebook / TikTok / X / YouTube URL"
+        placeholder="Paste YouTube URL"
         className="w-full border px-2 py-1 rounded"
         disabled={loading}
       />
