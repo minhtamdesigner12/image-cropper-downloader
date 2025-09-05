@@ -2,9 +2,7 @@
 
 import React, { useState } from "react";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://image-cropper-downloader-production.up.railway.app/download";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://image-cropper-downloader-production.up.railway.app/download";
 
 export default function DownloaderPane() {
   const [url, setUrl] = useState<string>("");
@@ -30,10 +28,7 @@ export default function DownloaderPane() {
       }
 
       const reader = res.body?.getReader();
-      const total = res.headers.get("Content-Length")
-        ? parseInt(res.headers.get("Content-Length")!, 10)
-        : 0;
-
+      const total = res.headers.get("Content-Length") ? parseInt(res.headers.get("Content-Length")!, 10) : 0;
       let receivedLength = 0;
       const chunks: Uint8Array[] = [];
 
@@ -50,11 +45,9 @@ export default function DownloaderPane() {
       }
 
       const blob = new Blob(chunks.map((chunk) => new Uint8Array(chunk)));
-
       const a = document.createElement("a");
       const urlParts = url.split("/");
       const fileName = urlParts[urlParts.length - 1].split("?")[0] || "video.mp4";
-
       a.href = URL.createObjectURL(blob);
       a.download = fileName.endsWith(".mp4") ? fileName : "video.mp4";
       document.body.appendChild(a);
@@ -88,10 +81,7 @@ export default function DownloaderPane() {
       </button>
       {loading && (
         <div className="w-full bg-gray-200 rounded h-2">
-          <div
-            className="bg-green-600 h-2 rounded"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="bg-green-600 h-2 rounded" style={{ width: `${progress}%` }} />
         </div>
       )}
     </div>
