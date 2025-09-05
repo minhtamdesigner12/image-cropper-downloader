@@ -1,44 +1,49 @@
-import YtDlpWrap from "yt-dlp-wrap"; // ✅ default import
+import { NextRequest, NextResponse } from "next/server";
 import { tmpdir } from "os";
 import { join } from "path";
-import { promises as fs } from "fs";
-import { NextRequest, NextResponse } from "next/server";
+import fs from "fs/promises";
+import YtDlpWrap from "yt-dlp-wrap";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-const ytDlpWrap = new YtDlpWrap();
 
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();
-    if (!url) return new NextResponse("Missing URL", { status: 400 });
 
-    // 1️⃣ Get video title
-    const titleRaw = (await ytDlpWrap.execPromise(["--get-title", url])).trim();
-    const title = titleRaw.replace(/[\/\\?%*:|"<>]/g, "_") || "video";
+    if (!url) {
+      return NextResponse.json({ error: "Missing URL" }, { status: 400 });
+    }
 
-    // 2️⃣ Temp file path
+    const ytdlp = new YtDlpWrap();
     const outPath = join(tmpdir(), `video_${Date.now()}.mp4`);
 
-    // 3️⃣ Download video
-    await ytDlpWrap.execPromise(["-f", "mp4", "-o", outPath, url]);
+    await ytdlp.execPromise([
+      "-f",
+      "best",
+      "--no-check-certificate",
+      "-o",
+      outPath,
+      url,
+    ]);
 
-    // 4️⃣ Read video file
     const buffer = await fs.readFile(outPath);
-
-    // 5️⃣ Delete temp file
     await fs.unlink(outPath);
 
-    // 6️⃣ Return as downloadable response
-    return new NextResponse(new Uint8Array(buffer), {
+    // ✅ Convert Buffer → Uint8Array (safe BodyInit type)
+    const uint8Array = new Uint8Array(buffer);
+
+    return new NextResponse(uint8Array, {
+      status: 200,
       headers: {
         "Content-Type": "video/mp4",
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(title)}.mp4"`,
+        "Content-Disposition": "attachment; filename=video.mp4",
       },
     });
-  } catch (err: any) {
-    console.error(err);
-    return new NextResponse("Download failed: " + err.message, { status: 500 });
+  } catch (err) {
+    console.error("yt-dlp error:", err);
+    return NextResponse.json(
+      { error: "Download failed", message: (err as Error).message },
+      { status: 500 }
+    );
   }
 }

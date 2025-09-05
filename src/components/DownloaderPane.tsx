@@ -7,7 +7,7 @@ export default function DownloaderPane() {
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
-    if (!url) return alert("Paste Facebook / TikTok / X / YouTube URL first");
+    if (!url) return alert("Paste a video URL first");
     setLoading(true);
 
     try {
@@ -18,8 +18,8 @@ export default function DownloaderPane() {
       });
 
       if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "Failed");
+        const err = await res.json();
+        throw new Error(err.message || "Download failed");
       }
 
       const blob = await res.blob();
@@ -44,15 +44,13 @@ export default function DownloaderPane() {
         className="w-full border px-2 py-1 rounded"
         disabled={loading}
       />
-      <div className="flex gap-2">
-        <button
-          onClick={handleDownload}
-          className="px-4 py-2 bg-green-600 text-white rounded"
-          disabled={loading}
-        >
-          {loading ? "Processing…" : "Download Video"}
-        </button>
-      </div>
+      <button
+        onClick={handleDownload}
+        disabled={loading}
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        {loading ? "Processing…" : "Download Video"}
+      </button>
     </div>
   );
 }
