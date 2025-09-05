@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Ad from "@/components/Ad";
+import Ad from "../components/Ad";
 
 export default function TermsPage() {
   return (

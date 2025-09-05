@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
     "express": "^5.1.0",
     "heic2any": "^0.0.4",
     "next": "^15.5.2",
@@ -20,6 +21,7 @@
     "react-easy-crop": "^5.0.6",
     "react-image-crop": "^11.0.10",
     "youtube-dl-exec": "^2.5.8",
+    "yt-dlp-exec": "^1.0.2",
     "yt-dlp-wrap": "^2.3.12",
     "ytdl-core": "^4.11.5"
   },

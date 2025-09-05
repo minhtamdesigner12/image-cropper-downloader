@@ -1,9 +1,9 @@
 import Head from "next/head";
-import CropperPane from "@/components/CropperPane";
-import DownloaderPane from "@/components/DownloaderPane";
-import PdfMakerPane from "@/components/PdfMakerPane";
-import Footer from "@/components/Footer";
-import Ad from "@/components/Ad";
+import CropperPane from "./components/CropperPane";
+import DownloaderPane from "./components/DownloaderPane";
+import PdfMakerPane from "./components/PdfMakerPane";
+import Footer from "./components/Footer";
+import Ad from "./components/Ad";
 
 export default function Page() {
   return (
@@ -25,30 +25,30 @@ export default function Page() {
           Download Videos, Image Cropper & PDF Tools
         </h1>
 
-        <Ad slot="1234567890" className="my-1" />
+        {/*<Ad slot="1234567890" className="my-1 h-10" />*/}
 
         <section>
-          <h2 className="text-xl font-bold mb-4">
+          <h2 className="text-xl font-bold mb-4 my-10">
             Crop Image with ratio 3:4, 4:6, 16:9 and enter the width
           </h2>
           <CropperPane />
         </section>
 
-        <Ad slot="1234567891" className="my-1" />
+        {/* <Ad slot="1234567891" className="my-1 h-10" />*/}
 
         <section>
-          <h2 className="text-xl font-bold mb-4">Download Video</h2>
+          <h2 className="text-xl font-bold mb-4 my-10">Download Video</h2>
           <DownloaderPane />
         </section>
 
-        <Ad slot="1234567892" className="my-1" />
+        {/* <Ad slot="1234567892" className="my-1 h-10" />*/}
 
         <section>
-          <h2 className="text-xl font-bold mb-4">PDF Maker</h2>
+          <h2 className="text-xl font-bold mb-4 my-10 ">PDF Maker</h2>
           <PdfMakerPane />
         </section>
 
-        <Ad slot="1234567893" className="my-6 mb-12" />
+        {/* <Ad slot="1234567893" className="my-6 mb-12" />>*/}
       </main>
 
       <Footer />
