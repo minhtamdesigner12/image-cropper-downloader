@@ -3,9 +3,8 @@
 import React, { useState } from "react";
 
 const BACKEND_URL =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:3002/download"
-    : "https://image-cropper-downloader-production.up.railway.app/download";
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "https://image-cropper-downloader-production.up.railway.app/download";
 
 export default function DownloaderPane() {
   const [url, setUrl] = useState<string>("");
@@ -31,10 +30,12 @@ export default function DownloaderPane() {
       }
 
       const reader = res.body?.getReader();
-      const contentLengthHeader = res.headers.get("Content-Length");
-      const total = contentLengthHeader ? parseInt(contentLengthHeader) : 0;
+      const total = res.headers.get("Content-Length")
+        ? parseInt(res.headers.get("Content-Length")!, 10)
+        : 0;
+
       let receivedLength = 0;
-      const chunks = [];
+      const chunks: Uint8Array[] = [];
 
       if (!reader) throw new Error("No data received");
 
@@ -48,7 +49,8 @@ export default function DownloaderPane() {
         }
       }
 
-      const blob = new Blob(chunks);
+      const blob = new Blob(chunks.map((chunk) => new Uint8Array(chunk)));
+
       const a = document.createElement("a");
       const urlParts = url.split("/");
       const fileName = urlParts[urlParts.length - 1].split("?")[0] || "video.mp4";
@@ -64,7 +66,7 @@ export default function DownloaderPane() {
       alert("Download error: " + (err?.message || "unknown"));
     } finally {
       setLoading(false);
-      setTimeout(() => setProgress(0), 1000); // reset after 1s
+      setTimeout(() => setProgress(0), 1000);
     }
   }
 
@@ -78,9 +80,7 @@ export default function DownloaderPane() {
         disabled={loading}
       />
       <button
-        onClick={() => {
-          if (!loading) handleDownload();
-        }}
+        onClick={() => { if (!loading) handleDownload(); }}
         className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
         disabled={loading}
       >

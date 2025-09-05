@@ -9,36 +9,28 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "body-parser": "^2.2.0",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "heic2any": "^0.0.4",
     "next": "^15.5.2",
-    "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.4.149",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-easy-crop": "^5.0.6",
     "react-image-crop": "^11.0.10",
-    "yt-dlp-wrap": "^2.3.12",
-    "ytdl-core": "^4.11.5"
+    "heic2any": "^0.0.4",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.149"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
-    "@types/pdfjs-dist": "^2.10.377",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
+    "@types/pdfjs-dist": "^2.10.377",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "serve": "^14.2.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.2"
   },
-  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+  "description": "Next.js frontend for Image Cropper Downloader",
   "main": "next.config.js",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
   "repository": {
     "type": "git",
