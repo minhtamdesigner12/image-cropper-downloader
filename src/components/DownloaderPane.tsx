@@ -6,19 +6,22 @@ export default function DownloaderPane() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Automatically switch between local dev and production
+  const BACKEND_URL =
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:3002/download"
+      : "https://image-cropper-downloader-production.up.railway.app/download";
+
   async function handleDownload() {
     if (!url) return alert("Paste a Facebook / TikTok / X / YouTube URL first");
     setLoading(true);
 
     try {
-      const res = await fetch(
-        "https://image-cropper-downloader-production.up.railway.app/download",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        }
-      );
+      const res = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
 
       if (!res.ok) throw new Error("Download failed");
 
