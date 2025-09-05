@@ -11,23 +11,24 @@ export default function DownloaderPane() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
+      const res = await fetch(
+        "https://image-cropper-downloader-production.up.railway.app/download",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        }
+      );
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "Failed");
-      }
+      if (!res.ok) throw new Error("Download failed");
 
       const blob = await res.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = "video.mp4";
+      document.body.appendChild(a);
       a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      a.remove();
     } catch (err: any) {
       alert("Download error: " + (err?.message || "unknown"));
     } finally {
