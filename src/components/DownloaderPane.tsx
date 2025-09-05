@@ -6,7 +6,7 @@ export default function DownloaderPane() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Automatically switch between local dev and production
+  // Use Railway URL for production, localhost for dev
   const BACKEND_URL =
     process.env.NODE_ENV === "development"
       ? "http://localhost:3002/download"
