@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState } from "react";
 
 const BACKEND_URL =
@@ -21,14 +22,17 @@ export default function DownloaderPane() {
         body: JSON.stringify({ url }),
       });
 
-      if (!res.ok) throw new Error("Download failed");
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Download failed: ${errText}`);
+      }
 
       const blob = await res.blob();
       const a = document.createElement("a");
 
+      // Generate a fallback filename
       const urlParts = url.split("/");
-      const fileName =
-        urlParts[urlParts.length - 1].split("?")[0] || "video.mp4";
+      const fileName = urlParts[urlParts.length - 1].split("?")[0] || "video.mp4";
 
       a.href = URL.createObjectURL(blob);
       a.download = fileName.endsWith(".mp4") ? fileName : "video.mp4";
@@ -46,7 +50,7 @@ export default function DownloaderPane() {
     <div className="space-y-4 max-w-md mx-auto mt-4">
       <input
         value={url}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+        onChange={(e) => setUrl(e.target.value)}
         placeholder="Paste video URL (YouTube, TikTok, Instagram, X.com)"
         className="w-full border px-2 py-1 rounded"
         disabled={loading}
