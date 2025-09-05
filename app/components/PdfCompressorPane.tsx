@@ -1,98 +1,70 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument } from "pdf-lib";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 
-// ✅ Use CDN worker for client-side
-if (typeof window !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-}
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 
+  "https://image-cropper-downloader-production.up.railway.app/download";
 
-export default function PdfCompressorPane() {
-  const [file, setFile] = useState<File | null>(null);
+export default function DownloaderPane() {
+  const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [quality, setQuality] = useState(0.5);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
-  };
-
-  const compressPdf = async () => {
-    if (!file) return alert("Upload a PDF first");
-
+  const handleDownload = async () => {
+    if (!url) return alert("Paste a video URL first");
     setLoading(true);
-    setProgress(0);
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const newPdfDoc = await PDFDocument.create();
+      const res = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
 
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 1 });
-
-        const canvas = document.createElement("canvas");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext("2d")!;
-
-        // ✅ Include canvas in render params
-        await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-
-        const dataUrl = canvas.toDataURL("image/jpeg", quality);
-        const imgBytes = Uint8Array.from(atob(dataUrl.split(",")[1]), c => c.charCodeAt(0));
-
-        const img = await newPdfDoc.embedJpg(imgBytes);
-        const newPage = newPdfDoc.addPage([viewport.width, viewport.height]);
-        newPage.drawImage(img, { x: 0, y: 0, width: viewport.width, height: viewport.height });
-
-        setProgress(Math.round((i / pdf.numPages) * 100));
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Download failed: ${errText}`);
       }
 
-      const compressedBytes = await newPdfDoc.save();
-      const blob = new Blob([new Uint8Array(compressedBytes)], { type: "application/pdf" });
+      // Convert response to Blob
+      const blob = await res.blob();
 
+      // Generate filename from URL
+      const urlParts = url.split("/");
+      let fileName = urlParts[urlParts.length - 1].split("?")[0];
+      if (!fileName || !fileName.endsWith(".mp4")) fileName = "video.mp4";
+
+      // Trigger download
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "compressed.pdf";
+      a.download = fileName;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       URL.revokeObjectURL(a.href);
-    } catch (err) {
-      console.error(err);
-      alert("Compression failed");
+
+    } catch (err: any) {
+      alert("Download error: " + (err?.message || "unknown"));
     } finally {
       setLoading(false);
-      setProgress(0);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <input type="file" accept="application/pdf" onChange={handleFile} />
-      <div className="flex items-center gap-2">
-        <label className="text-sm">JPEG Quality:</label>
-        <input
-          type="range"
-          min="0.1"
-          max="1"
-          step={0.05}
-          value={quality}
-          onChange={(e) => setQuality(Number(e.target.value))}
-          className="flex-1"
-        />
-        <span className="w-12 text-right">{Math.round(quality * 100)}%</span>
-      </div>
-      {loading && <p>Compressing… {progress}%</p>}
+    <div className="space-y-4 max-w-md mx-auto mt-4">
+      <input
+        type="text"
+        placeholder="Paste video URL (YouTube, TikTok, Instagram, X.com)"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        className="w-full border px-2 py-1 rounded"
+        disabled={loading}
+      />
       <button
-        onClick={compressPdf}
-        className="px-4 py-2 bg-green-600 text-white rounded"
+        onClick={handleDownload}
+        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
         disabled={loading}
       >
-        {loading ? "Compressing…" : "Compress PDF"}
+        {loading ? "Processing…" : "Download Video"}
       </button>
     </div>
   );
