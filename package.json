@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build && next export",
-    "start": "npx serve@latest out",
-    "lint": "next lint"
+  "dev": "next dev",            
+  "build": "next build",         
+  "start": "npx serve@latest out", 
+  "lint": "next lint"           
   },
   "dependencies": {
     "heic2any": "^0.0.4",
@@ -24,6 +24,7 @@
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "autoprefixer": "^10.4.21",
+    "eslint": "^9.35.0",
     "postcss": "^8.5.6",
     "serve": "^14.2.5",
     "tailwindcss": "^3.4.17",
