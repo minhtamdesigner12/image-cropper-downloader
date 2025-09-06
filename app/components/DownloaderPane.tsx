@@ -7,8 +7,8 @@ const BACKEND_URL =
   "https://image-cropper-downloader-production.up.railway.app/download";
 
 export default function DownloaderPane() {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [url, setUrl] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   async function handleDownload() {
     if (!url.trim()) return alert("Paste a video URL first");
@@ -23,13 +23,12 @@ export default function DownloaderPane() {
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
-        const errText = errJson?.error || (await res.text());
+        const errText = errJson?.error || await res.text();
         throw new Error(errText || "Unknown error");
       }
 
       const blob = await res.blob();
       const a = document.createElement("a");
-
       const urlParts = url.split("/");
       let fileName = urlParts[urlParts.length - 1].split("?")[0];
       if (!fileName || !fileName.endsWith(".mp4")) fileName = `video-${Date.now()}.mp4`;

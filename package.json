@@ -4,26 +4,25 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "export": "next export"
+    "build": "next build && next export",
+    "start": "npx serve@latest out",
+    "lint": "next lint"
   },
   "dependencies": {
+    "heic2any": "^0.0.4",
     "next": "^15.5.2",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.149",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-easy-crop": "^5.0.6",
-    "react-image-crop": "^11.0.10",
-    "heic2any": "^0.0.4",
-    "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.4.149"
+    "react-image-crop": "^11.0.10"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "@types/pdfjs-dist": "^2.10.377",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
-    "@types/pdfjs-dist": "^2.10.377",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "serve": "^14.2.5",
