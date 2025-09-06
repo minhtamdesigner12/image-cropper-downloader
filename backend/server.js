@@ -31,7 +31,7 @@ app.post("/download", async (req, res) => {
   try {
     const process = ytdlp.execStream({
       url,
-      args: ["-f", "best", "-o", "-"]
+      execArgs: ["-f", "best", "-o", "-"]
     });
 
 
