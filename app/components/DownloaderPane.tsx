@@ -11,7 +11,7 @@ export default function DownloaderPane() {
   const [loading, setLoading] = useState<boolean>(false);
 
   async function handleDownload() {
-    if (!url.trim()) return alert("Paste a video URL first");
+    if (!url) return alert("Paste a video URL first");
     setLoading(true);
 
     try {
@@ -22,21 +22,18 @@ export default function DownloaderPane() {
       });
 
       if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        const errText = errJson?.error || await res.text();
-        throw new Error(errText || "Unknown error");
+        const errText = await res.text();
+        throw new Error(`Download failed: ${errText}`);
       }
 
       const blob = await res.blob();
       const a = document.createElement("a");
 
-      // Extract filename from URL or fallback
       const urlParts = url.split("/");
-      let fileName = urlParts[urlParts.length - 1].split("?")[0];
-      if (!fileName || !fileName.endsWith(".mp4")) fileName = `video-${Date.now()}.mp4`;
+      const fileName = urlParts[urlParts.length - 1].split("?")[0] || "video.mp4";
 
       a.href = URL.createObjectURL(blob);
-      a.download = fileName;
+      a.download = fileName.endsWith(".mp4") ? fileName : "video.mp4";
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -52,13 +49,13 @@ export default function DownloaderPane() {
       <input
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        placeholder="Paste video URL (YouTube, TikTok, Instagram, X.com)"
+        placeholder="Paste video URL (YouTube, TikTok, Instagram, X.com, Facebook)"
         className="w-full border px-2 py-1 rounded"
         disabled={loading}
       />
       <button
         onClick={handleDownload}
-        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
         disabled={loading}
       >
         {loading ? "Processing…" : "Download Video"}
