@@ -1,11 +1,9 @@
-// backend/server.js
-
 // ----------------------------
 // Imports
 // ----------------------------
 const express = require("express");
 const cors = require("cors");
-const YtDlpWrap = require("yt-dlp-wrap").default; // Correct import for Node.js
+const YtDlpWrap = require("yt-dlp-wrap").default; // Correct import
 
 // ----------------------------
 // App and Port
@@ -16,7 +14,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Initialize yt-dlp-wrap
 // ----------------------------
-const ytdlp = new YtDlpWrap(); // ✅ now works correctly
+const ytdlp = new YtDlpWrap();
 
 // ----------------------------
 // Middleware
@@ -30,10 +28,10 @@ app.use(
 );
 
 app.use(express.json({ limit: "50mb" }));
-app.options("*", cors()); // enable preflight requests for all routes
+app.options("*", cors()); // preflight requests
 
 // ----------------------------
-// Ping route (test if server is alive)
+// Ping route
 // ----------------------------
 app.get("/ping", (_, res) => {
   console.log("Ping received");
@@ -53,23 +51,25 @@ app.post("/download", async (req, res) => {
   const fileName = `video_${Date.now()}.mp4`;
   console.log("Download requested:", url);
 
-  // Set headers so browser downloads file
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   res.setHeader("Content-Type", "video/mp4");
 
   try {
-    // Use yt-dlp-wrap to stream video
-    const process = ytdlp.execStream(url, ["-f", "best", "-o", "-"]);
+    // Correct way: pass url & args as object
+    const process = ytdlp.execStream({
+      url,
+      args: ["-f", "best", "-o", "-"]
+    });
 
-    // Pipe stdout to response (stream video to browser)
+    // Stream video to client
     process.stdout.pipe(res);
 
-    // Log yt-dlp stderr for debugging
+    // Log yt-dlp errors
     process.stderr.on("data", (data) => {
       console.error("yt-dlp error:", data.toString());
     });
 
-    // Log when process finishes
+    // When process finishes
     process.on("close", (code) => {
       if (code !== 0) console.error(`yt-dlp exited with code ${code}`);
       else console.log("Download finished successfully");
@@ -81,6 +81,7 @@ app.post("/download", async (req, res) => {
       if (!res.headersSent)
         res.status(500).json({ error: "yt-dlp failed: " + err.message });
     });
+
   } catch (err) {
     console.error("Download failed:", err);
     if (!res.headersSent)
