@@ -29,8 +29,9 @@ app.post("/download", async (req, res) => {
   res.setHeader("Content-Type", "video/mp4");
 
   try {
-    const process = ytdlp.execStream(url, {
-      args: ["-f", "best", "-o", "-"]
+    const process = ytdlp.execStream({
+      url: url,
+      execArgs: ["-f", "best", "-o", "-"]
     });
 
 
