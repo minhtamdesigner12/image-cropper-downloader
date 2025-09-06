@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-  "dev": "next dev",            
-  "build": "next build",         
-  "start": "npx serve@latest out", 
-  "lint": "next lint"           
+    "dev": "next dev",
+    "build": "next build",
+    "start": "npx serve@latest out",
+    "lint": "next lint"
   },
   "dependencies": {
     "heic2any": "^0.0.4",
@@ -16,7 +16,8 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-easy-crop": "^5.0.6",
-    "react-image-crop": "^11.0.10"
+    "react-image-crop": "^11.0.10",
+    "yt-dlp-wrap": "^2.3.12"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
