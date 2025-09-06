@@ -30,8 +30,8 @@ app.post("/download", async (req, res) => {
 
   try {
     const process = ytdlp.execStream({
-      url: url, // the video URL
-      args: ["-f", "best", "-o", "-"] // array of yt-dlp arguments
+      url,
+      args: ["-f", "best", "-o", "-"]
     });
 
 
