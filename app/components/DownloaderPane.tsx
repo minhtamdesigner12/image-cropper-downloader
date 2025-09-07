@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://image-cropper-downloader-production.up.railway.app/api/download";
+const BACKEND_URL = "https://image-cropper-downloader-production.up.railway.app/api/download";
 
 export default function DownloaderPane() {
   const [url, setUrl] = useState("");

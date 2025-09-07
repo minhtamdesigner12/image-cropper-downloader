@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  output: 'export', // <-- enables static export
+  output: 'export', // enable static HTML export
+  trailingSlash: true, // optional, keeps URL paths consistent
 };
 
 module.exports = nextConfig;

@@ -5,6 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 const urlModule = require("url");
+const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -12,8 +13,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Cross-platform ffmpeg path
 // ----------------------------
-const ffmpegPath = path.join(__dirname, "ffmpeg"); // Railway / Linux
-
+const ffmpegPath = ffmpegInstaller.path;
 if (!fs.existsSync(ffmpegPath)) {
   console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
