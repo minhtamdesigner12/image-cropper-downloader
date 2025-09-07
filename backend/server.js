@@ -1,9 +1,9 @@
-// backend/server.js
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const YtDlpWrap = require("yt-dlp-wrap").default;
+const urlModule = require("url");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -12,11 +12,11 @@ const PORT = process.env.PORT || 8080;
 // Cross-platform ffmpeg path
 // ----------------------------
 const ffmpegPath = process.platform === "darwin"
-  ? "/opt/homebrew/bin/ffmpeg" // macOS local testing
-  : path.join(__dirname, "..", "ffmpeg"); // Railway Linux
+  ? "/opt/homebrew/bin/ffmpeg"
+  : path.join(__dirname, "..", "ffmpeg");
 
 // ----------------------------
-// Path to yt-dlp binary
+// yt-dlp binary path
 // ----------------------------
 const ytdlpPath = path.join(__dirname, "..", "yt-dlp_linux");
 if (!fs.existsSync(ytdlpPath)) {
@@ -47,6 +47,29 @@ app.options("*", cors());
 app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 
 // ----------------------------
+// Helper: detect platform and set options
+// ----------------------------
+function getPlatformOptions(url) {
+  const hostname = urlModule.parse(url).hostname || "";
+  let referer = "";
+  let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+  if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
+    referer = "https://www.youtube.com/";
+  } else if (hostname.includes("x.com") || hostname.includes("twitter.com")) {
+    referer = "https://x.com/";
+  } else if (hostname.includes("facebook.com")) {
+    referer = "https://www.facebook.com/";
+  } else if (hostname.includes("instagram.com")) {
+    referer = "https://www.instagram.com/";
+  } else if (hostname.includes("tiktok.com")) {
+    referer = "https://www.tiktok.com/";
+  }
+
+  return { referer, ua };
+}
+
+// ----------------------------
 // Download route
 // ----------------------------
 app.post("/download", async (req, res) => {
@@ -59,14 +82,16 @@ app.post("/download", async (req, res) => {
   const cookiesPath = path.join(__dirname, "cookies.txt");
   const useCookies = fs.existsSync(cookiesPath);
 
+  const { referer, ua } = getPlatformOptions(url);
+
   const args = [
     "-f", "mp4/best",
     "--no-playlist",
     "--ffmpeg-location", ffmpegPath,
     "--no-check-certificate",
     "--rm-cache-dir",
-    "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "--referer", "https://freetlo.com/",
+    "--user-agent", ua,
+    "--referer", referer,
     url,
     "-o", tmpFilePath
   ];
@@ -80,7 +105,7 @@ app.post("/download", async (req, res) => {
     await ytdlp.exec(args);
 
     if (!fs.existsSync(tmpFilePath)) {
-      return res.status(500).json({ error: "Video file was not created. Possibly blocked by YouTube." });
+      return res.status(500).json({ error: "Video file was not created. Possibly blocked by the platform." });
     }
 
     res.download(tmpFilePath, `video_${Date.now()}.mp4`, (err) => {
@@ -90,13 +115,15 @@ app.post("/download", async (req, res) => {
   } catch (err) {
     console.error("❌ Download failed:", err.stderr || err.message || err);
 
-    // Detect YouTube bot block
-    const botBlock = err.stderr?.includes("Sign in to confirm you’re not a bot") || err.stderr?.includes("403") || err.message?.includes("403");
+    const botBlock = (err.stderr && (
+      err.stderr.includes("Sign in to confirm you’re not a bot") ||
+      err.stderr.includes("403")
+    )) || (err.message && err.message.includes("403"));
 
     if (!res.headersSent) {
       if (botBlock) {
         res.status(403).json({
-          error: "YouTube blocked the download. Try using cookies or a proxy to bypass bot detection.",
+          error: "Download blocked by the platform. Try using cookies or a proxy to bypass bot detection.",
         });
       } else {
         res.status(500).json({
