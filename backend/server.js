@@ -11,8 +11,8 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Path to yt-dlp binary
 // ----------------------------
-// Make sure yt-dlp_macos is in project root
-const binaryPath = path.join(__dirname, "..", "yt-dlp_macos");
+// Make sure yt-dlp_linux is in project root
+const binaryPath = path.join(__dirname, "..", "yt-dlp_linux");
 const ytdlp = new YtDlpWrap(binaryPath);
 
 // ----------------------------
