@@ -1,4 +1,3 @@
-// backend/server.js
 // ----------------------------
 // Simple streaming backend for yt-dlp (yt-dlp-wrap v2.x)
 // ----------------------------
@@ -8,14 +7,10 @@ const path = require("path");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 
 // ----------------------------
-// Setup yt-dlp + ffmpeg paths
+// Setup yt-dlp binary path
 // ----------------------------
-
-const binaryPath = path.join(__dirname, "yt-dlp");  // stays inside backend/
+const binaryPath = path.join(__dirname, "yt-dlp"); // downloaded in postinstall
 const ytdlp = new YtDlpWrap(binaryPath);
-
-// Ensure PATH includes project root (so ffmpeg works if installed locally)
-process.env.PATH = __dirname + path.delimiter + process.env.PATH;
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -48,65 +43,57 @@ app.post("/download", (req, res) => {
     return res.status(400).json({ error: "No URL provided" });
   }
 
-  console.log("▶️ Starting download for:", url);
+  console.log("🚀 Starting download for:", url);
 
   const fileName = `video_${Date.now()}.mp4`;
-  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+  res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
   res.setHeader("Content-Type", "video/mp4");
 
   try {
-    // yt-dlp args
-    const args = [
-      "-f", "bestvideo+bestaudio/best",
-      "--merge-output-format", "mp4",
-      "-o", "-",
-      "--no-playlist",
-      "--verbose",
-      url,
-    ];
+    // ✅ Force yt-dlp to stream video to stdout
+    const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
+    console.log("🛠️ yt-dlp args:", args.join(" "));
 
-    console.log("▶️ yt-dlp binary:", binaryPath);
-    console.log("▶️ yt-dlp args:", args.join(" "));
+    const proc = ytdlp.execStream(args);
 
-    // execStream() returns a Readable stream directly
-    const stream = ytdlp.execStream(args);
+    // pipe stdout → response
+    proc.stdout.pipe(res);
 
-    // Debug: count chunks
-    let totalBytes = 0;
-
-    stream.on("data", (chunk) => {
-      totalBytes += chunk.length;
-      console.log(`[yt-dlp data] ${chunk.length} bytes (total ${totalBytes})`);
+    // log stderr for debugging
+    proc.stderr.on("data", (chunk) => {
+      const msg = chunk.toString().trim();
+      if (msg) console.error("⚠️ yt-dlp stderr:", msg);
     });
 
-    stream.on("error", (err) => {
-      console.error("❌ yt-dlp error:", err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "yt-dlp failed: " + err.message });
-      } else {
-        try { res.end(); } catch {}
-      }
-    });
-
-    stream.on("end", () => {
-      console.log(`✅ yt-dlp stream ended, total ${totalBytes} bytes`);
+    proc.on("close", (code) => {
+      console.log("✅ yt-dlp exited with code:", code);
       if (!res.finished) res.end();
     });
 
-    // Pipe video to client
-    stream.pipe(res);
+    proc.on("error", (err) => {
+      console.error("❌ yt-dlp process error:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "yt-dlp failed: " + err.message });
+      } else {
+        try {
+          res.end();
+        } catch {}
+      }
+    });
 
-    // Kill stream if client disconnects
+    // client disconnected
     req.on("close", () => {
-      console.log("⚠️ Client disconnected — killing yt-dlp stream");
-      try { stream.destroy(); } catch {}
+      console.log("⚡ Client disconnected — killing yt-dlp process");
+      try {
+        proc.kill("SIGKILL");
+      } catch {}
     });
   } catch (err) {
     console.error("❌ Download failed (catch):", err);
     if (!res.headersSent) {
-      res.status(500).json({
-        error: "Download failed: " + (err && err.message ? err.message : err),
-      });
+      res
+        .status(500)
+        .json({ error: "Download failed: " + (err.message || err) });
     }
   }
 });
@@ -114,4 +101,4 @@ app.post("/download", (req, res) => {
 // ----------------------------
 // Start server
 // ----------------------------
-app.listen(PORT, () => console.log(`🚀 Backend running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
