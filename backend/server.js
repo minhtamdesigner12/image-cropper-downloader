@@ -1,7 +1,7 @@
 // backend/server.js
 // ----------------------------
 // Express backend for yt-dlp streaming using yt-dlp_linux
-// Supports authenticated downloads via cookies.txt
+// Handles cookies, headers, 403 errors, and temp file cleanup
 // ----------------------------
 
 const express = require("express");
@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Path to yt-dlp binary
 // ----------------------------
-const binaryPath = path.join(__dirname, "..", "yt-dlp_linux"); // should exist and be executable
+const binaryPath = path.join(__dirname, "..", "yt-dlp_linux");
 if (!fs.existsSync(binaryPath)) {
   console.error("❌ yt-dlp binary not found:", binaryPath);
   process.exit(1);
@@ -42,7 +42,7 @@ app.options("*", cors());
 app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 
 // ----------------------------
-// Download route
+// Download route with 403 handling
 // ----------------------------
 app.post("/download", async (req, res) => {
   const { url } = req.body;
@@ -50,42 +50,69 @@ app.post("/download", async (req, res) => {
 
   console.log("🎬 Starting download for:", url);
 
-  // Temp file path
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
-
-  // Cookies (optional for YouTube/X)
   const cookiesPath = path.join(__dirname, "cookies.txt");
   const useCookies = fs.existsSync(cookiesPath);
 
-  // yt-dlp arguments
-  const args = ["-f", "mp4/best", "--no-playlist", url, "-o", tmpFilePath];
+  // Base yt-dlp arguments
+  const baseArgs = [
+    "-f", "mp4/best",
+    "--no-playlist",
+    "--no-check-certificate",
+    "--rm-cache-dir",
+    "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "--referer", "https://freetlo.com/",
+    url,
+    "-o", tmpFilePath
+  ];
+
   if (useCookies) {
-    args.push("--cookies", cookiesPath);
+    baseArgs.push("--cookies", cookiesPath);
     console.log("🍪 Using cookies from:", cookiesPath);
   }
 
-  try {
-    // Download video
-    await ytdlp.exec(args);
+  // Function to attempt download with retry
+  const downloadVideo = async (attempt = 1) => {
+    try {
+      console.log(`⬇️ Attempt ${attempt} to download video`);
+      await ytdlp.exec(baseArgs);
 
-    if (!fs.existsSync(tmpFilePath)) {
-      console.error("❌ Video file not created:", tmpFilePath);
-      return res.status(500).json({ error: "Video download failed: file not created" });
+      if (!fs.existsSync(tmpFilePath)) {
+        throw new Error("Video file not created after download");
+      }
+
+      // Send file to client
+      res.download(tmpFilePath, `video_${Date.now()}.mp4`, (err) => {
+        if (err) console.error("❌ Error sending file:", err);
+        fs.unlink(tmpFilePath, () => {});
+      });
+    } catch (err) {
+      console.error(`❌ Attempt ${attempt} failed:`, err.stderr || err.message || err);
+
+      const is403 = err.stderr?.includes("403") || (err.message && err.message.includes("403"));
+
+      if (is403 && attempt < 2) {
+        console.log("⚡ 403 detected — retrying with cookies (if available)");
+        if (!useCookies && fs.existsSync(cookiesPath)) {
+          baseArgs.push("--cookies", cookiesPath);
+        }
+        await downloadVideo(attempt + 1);
+      } else {
+        if (!res.headersSent) {
+          const errorMsg = is403
+            ? "Download blocked (403 Forbidden) — try using cookies or a different URL"
+            : err.stderr || err.message || "Unknown error";
+          res.status(500).json({ error: "yt-dlp failed: " + errorMsg });
+        }
+        try { fs.unlink(tmpFilePath, () => {}); } catch {}
+      }
     }
+  };
 
-    // Send file
-    res.download(tmpFilePath, `video_${Date.now()}.mp4`, (err) => {
-      if (err) console.error("❌ Error sending file:", err);
-      fs.unlink(tmpFilePath, () => {}); // delete temp file
-    });
-  } catch (err) {
-    console.error("❌ Download failed:", err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: "yt-dlp failed: " + err.message });
-    }
-  }
+  // Start download
+  await downloadVideo();
 
-  // Cleanup on client disconnect
+  // Cleanup if client disconnects
   req.on("close", () => {
     console.log("⚡ Client disconnected — cleaning temp file");
     try { fs.unlink(tmpFilePath, () => {}); } catch {}
