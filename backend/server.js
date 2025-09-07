@@ -1,7 +1,7 @@
 // backend/server.js
 // ----------------------------
 // Express backend for yt-dlp streaming (Linux standalone binary)
-// Supports authenticated downloads via cookies.txt
+// Supports authenticated downloads via cookies.txt for YouTube, Facebook, X.com, Freetle
 // ----------------------------
 
 const express = require("express");
@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Path to yt-dlp binary
 // ----------------------------
-const binaryPath = path.join(__dirname, "..", "yt-dlp_linux"); // Linux binary for Railway
+const binaryPath = path.join(__dirname, "..", "yt-dlp_linux");
 if (!fs.existsSync(binaryPath)) {
   console.error("❌ yt-dlp binary not found:", binaryPath);
   process.exit(1);
@@ -53,7 +53,7 @@ app.post("/download", async (req, res) => {
   // Temporary file to store downloaded video
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
 
-  // Cookies support
+  // Check if cookies.txt exists
   const cookiesPath = path.join(__dirname, "..", "cookies.txt");
   const useCookies = fs.existsSync(cookiesPath);
 
@@ -66,7 +66,7 @@ app.post("/download", async (req, res) => {
   try {
     const stream = ytdlp.execStream(args);
 
-    // Log events for debugging
+    // Log yt-dlp events
     stream.on("ytDlpEvent", (type, data) => {
       const msg = data?.toString?.().trim();
       if (msg) console.log(`[yt-dlp:${type}]`, msg);
@@ -74,6 +74,7 @@ app.post("/download", async (req, res) => {
     stream.on("stderr", (chunk) => console.error("yt-dlp stderr:", chunk.toString()));
     stream.on("stdout", (chunk) => console.log("yt-dlp stdout chunk:", chunk.length, "bytes"));
 
+    // Handle exit
     stream.on("close", (code) => {
       console.log("✅ yt-dlp exited with code:", code);
 
@@ -85,7 +86,6 @@ app.post("/download", async (req, res) => {
       // Send file to client
       res.download(tmpFilePath, `video_${Date.now()}.mp4`, (err) => {
         if (err) console.error("❌ Error sending file:", err);
-        // Delete temp file after sending
         fs.unlink(tmpFilePath, () => {});
       });
     });
@@ -122,10 +122,11 @@ app.listen(PORT, "0.0.0.0", () => {
 
 2. Make sure cookies.txt exists in project root:
    image-cropper-downloader/cookies.txt
+   (include active cookies for YouTube, Facebook, X.com, Freetle)
 
 3. Push changes to GitHub:
    git add backend/server.js yt-dlp_linux cookies.txt
-   git commit -m "Update server.js: robust download with cookies"
+   git commit -m "Update server.js: robust download with cookies for multiple sites"
    git push origin main
 
 4. Railway will auto-rebuild your container and include the Linux binary and cookies.txt.
