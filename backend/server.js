@@ -1,7 +1,8 @@
 // backend/server.js
 // ----------------------------
-// Express backend for yt-dlp streaming using platform-specific binaries
-// Supports Facebook, TikTok, X.com, Instagram, YouTube
+// Express backend for yt-dlp streaming
+// Supports public video downloads (Facebook, TikTok, X, Instagram)
+// Skips YouTube to avoid bot-detection issues
 // ----------------------------
 
 const express = require("express");
@@ -15,26 +16,22 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// Cross-platform FFmpeg path
+// Cross-platform ffmpeg path
 // ----------------------------
 const ffmpegPath = process.platform === "darwin"
-  ? "/opt/homebrew/bin/ffmpeg" // macOS
-  : path.join(__dirname, "ffmpeg"); // Linux / Railway
-
-if (!fs.existsSync(ffmpegPath)) {
-  console.error("❌ FFmpeg binary not found:", ffmpegPath);
-  process.exit(1);
-}
+  ? "/opt/homebrew/bin/ffmpeg"
+  : path.join(__dirname, "..", "ffmpeg");
 
 // ----------------------------
-// Cross-platform yt-dlp path
+// yt-dlp binary path
 // ----------------------------
-const ytdlpPath = process.platform === "darwin"
-  ? path.join(__dirname, "yt-dlp_macos")
-  : path.join(__dirname, "yt-dlp_linux");
-
+const ytdlpPath = path.join(__dirname, "..", "yt-dlp_linux");
 if (!fs.existsSync(ytdlpPath)) {
   console.error("❌ yt-dlp binary not found:", ytdlpPath);
+  process.exit(1);
+}
+if (!fs.existsSync(ffmpegPath)) {
+  console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
 }
 
@@ -57,18 +54,25 @@ app.options("*", cors());
 app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 
 // ----------------------------
-// Helper: detect platform and set options
+// Helper: detect platform & set headers
 // ----------------------------
 function getPlatformOptions(url) {
   const hostname = urlModule.parse(url).hostname || "";
   let referer = "";
   let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) referer = "https://www.youtube.com/";
-  else if (hostname.includes("x.com") || hostname.includes("twitter.com")) referer = "https://x.com/";
-  else if (hostname.includes("facebook.com")) referer = "https://www.facebook.com/";
-  else if (hostname.includes("instagram.com")) referer = "https://www.instagram.com/";
-  else if (hostname.includes("tiktok.com")) referer = "https://www.tiktok.com/";
+  if (hostname.includes("x.com") || hostname.includes("twitter.com")) {
+    referer = "https://x.com/";
+  } else if (hostname.includes("facebook.com")) {
+    referer = "https://www.facebook.com/";
+  } else if (hostname.includes("instagram.com")) {
+    referer = "https://www.instagram.com/";
+  } else if (hostname.includes("tiktok.com")) {
+    referer = "https://www.tiktok.com/";
+  } else if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
+    // Skip YouTube for now
+    return null;
+  }
 
   return { referer, ua };
 }
@@ -80,13 +84,15 @@ app.post("/download", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
 
+  const platformOptions = getPlatformOptions(url);
+  if (!platformOptions) {
+    return res.status(403).json({ error: "YouTube downloads are skipped to avoid bot detection" });
+  }
+
+  const { referer, ua } = platformOptions;
   console.log("🎬 Starting download for:", url);
 
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
-  const cookiesPath = path.join(__dirname, "cookies.txt");
-  const useCookies = fs.existsSync(cookiesPath);
-
-  const { referer, ua } = getPlatformOptions(url);
 
   const args = [
     "-f", "mp4/best",
@@ -99,11 +105,6 @@ app.post("/download", async (req, res) => {
     url,
     "-o", tmpFilePath
   ];
-
-  if (useCookies) {
-    args.push("--cookies", cookiesPath);
-    console.log("🍪 Using cookies from:", cookiesPath);
-  }
 
   try {
     await ytdlp.exec(args);
@@ -119,22 +120,18 @@ app.post("/download", async (req, res) => {
   } catch (err) {
     console.error("❌ Download failed:", err.stderr || err.message || err);
 
-    const botBlock = (err.stderr && (
-      err.stderr.includes("Sign in to confirm you’re not a bot") ||
-      err.stderr.includes("403")
+    const blocked = (err.stderr && (
+      err.stderr.includes("403") || err.stderr.includes("Sign in to confirm you’re not a bot")
     )) || (err.message && err.message.includes("403"));
 
     if (!res.headersSent) {
-      if (botBlock) {
-        res.status(403).json({
-          error: "Download blocked by the platform. Try using cookies or a proxy to bypass bot detection.",
-        });
-      } else {
-        res.status(500).json({
-          error: "yt-dlp failed: " + (err.stderr || err.message || "Unknown error"),
-        });
-      }
+      res.status(blocked ? 403 : 500).json({
+        error: blocked
+          ? "Download blocked by platform. Try a public video."
+          : "yt-dlp failed: " + (err.stderr || err.message || "Unknown error")
+      });
     }
+
     try { fs.unlink(tmpFilePath, () => {}); } catch {}
   }
 
