@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node backend/server.js",
-    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o yt-dlp_linux && chmod +x yt-dlp_linux && curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz | tar -xJ --strip-components=1 -C ./ && chmod +x ffmpeg"
+    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o yt-dlp_linux && chmod +x yt-dlp_linux && curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o ffmpeg.tar.xz && mkdir -p ffmpeg_temp && tar -xJf ffmpeg.tar.xz -C ffmpeg_temp --strip-components=1 && mv ffmpeg_temp/ffmpeg ./ffmpeg && mv ffmpeg_temp/ffprobe ./ffprobe && chmod +x ffmpeg ffprobe && rm -rf ffmpeg_temp ffmpeg.tar.xz"
   },
   "dependencies": {
     "cors": "^2.8.5",

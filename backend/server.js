@@ -1,3 +1,9 @@
+// backend/server.js
+// ----------------------------
+// Express backend for yt-dlp streaming using platform-specific binaries
+// Supports Facebook, TikTok, X.com, Instagram, YouTube
+// ----------------------------
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -9,22 +15,26 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// Cross-platform ffmpeg path
+// Cross-platform FFmpeg path
 // ----------------------------
 const ffmpegPath = process.platform === "darwin"
-  ? "/opt/homebrew/bin/ffmpeg"
-  : path.join(__dirname, "..", "ffmpeg");
+  ? "/opt/homebrew/bin/ffmpeg" // macOS
+  : path.join(__dirname, "ffmpeg"); // Linux / Railway
 
-// ----------------------------
-// yt-dlp binary path
-// ----------------------------
-const ytdlpPath = path.join(__dirname, "..", "yt-dlp_linux");
-if (!fs.existsSync(ytdlpPath)) {
-  console.error("❌ yt-dlp binary not found:", ytdlpPath);
+if (!fs.existsSync(ffmpegPath)) {
+  console.error("❌ FFmpeg binary not found:", ffmpegPath);
   process.exit(1);
 }
-if (!fs.existsSync(ffmpegPath)) {
-  console.error("❌ ffmpeg binary not found:", ffmpegPath);
+
+// ----------------------------
+// Cross-platform yt-dlp path
+// ----------------------------
+const ytdlpPath = process.platform === "darwin"
+  ? path.join(__dirname, "yt-dlp_macos")
+  : path.join(__dirname, "yt-dlp_linux");
+
+if (!fs.existsSync(ytdlpPath)) {
+  console.error("❌ yt-dlp binary not found:", ytdlpPath);
   process.exit(1);
 }
 
@@ -54,17 +64,11 @@ function getPlatformOptions(url) {
   let referer = "";
   let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
-    referer = "https://www.youtube.com/";
-  } else if (hostname.includes("x.com") || hostname.includes("twitter.com")) {
-    referer = "https://x.com/";
-  } else if (hostname.includes("facebook.com")) {
-    referer = "https://www.facebook.com/";
-  } else if (hostname.includes("instagram.com")) {
-    referer = "https://www.instagram.com/";
-  } else if (hostname.includes("tiktok.com")) {
-    referer = "https://www.tiktok.com/";
-  }
+  if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) referer = "https://www.youtube.com/";
+  else if (hostname.includes("x.com") || hostname.includes("twitter.com")) referer = "https://x.com/";
+  else if (hostname.includes("facebook.com")) referer = "https://www.facebook.com/";
+  else if (hostname.includes("instagram.com")) referer = "https://www.instagram.com/";
+  else if (hostname.includes("tiktok.com")) referer = "https://www.tiktok.com/";
 
   return { referer, ua };
 }
