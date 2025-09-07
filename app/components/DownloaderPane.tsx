@@ -1,17 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   "https://image-cropper-downloader-production.up.railway.app/download";
 
 export default function DownloaderPane() {
-  const [url, setUrl] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function handleDownload() {
-    if (!url.trim()) return alert("Paste a video URL first");
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setUrl(text);
+      } else {
+        alert("Clipboard is empty.");
+      }
+    } catch (err) {
+      alert("Failed to read clipboard. Please paste manually.");
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!url) return alert("Paste a video URL first");
     setLoading(true);
 
     try {
@@ -22,45 +35,58 @@ export default function DownloaderPane() {
       });
 
       if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        const errText = errJson?.error || await res.text();
-        throw new Error(errText || "Unknown error");
+        const errText = await res.text();
+        throw new Error(`Download failed: ${errText}`);
       }
 
       const blob = await res.blob();
-      const a = document.createElement("a");
+
       const urlParts = url.split("/");
       let fileName = urlParts[urlParts.length - 1].split("?")[0];
-      if (!fileName || !fileName.endsWith(".mp4")) fileName = `video-${Date.now()}.mp4`;
+      if (!fileName || !fileName.endsWith(".mp4")) fileName = "video.mp4";
 
+      const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
+      URL.revokeObjectURL(a.href);
     } catch (err: any) {
       alert("Download error: " + (err?.message || "unknown"));
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="space-y-4 max-w-md mx-auto mt-4">
-      <input
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="Paste video URL (YouTube, TikTok, Instagram, X.com)"
-        className="w-full border px-2 py-1 rounded"
-        disabled={loading}
-      />
-      <button
-        onClick={handleDownload}
-        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-        disabled={loading}
-      >
-        {loading ? "Processing…" : "Download Video"}
-      </button>
-    </div>
+        <div className="space-y-3">
+          {/* 🔹 Input + Paste button same row */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Paste video URL (YouTube, TikTok, Instagram, X.com)"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="flex-1 border px-3 py-2 rounded"
+              disabled={loading}
+            />
+            <button
+              onClick={handlePaste}
+              className="px-4 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center"
+              disabled={loading}
+            >
+              Paste URL
+            </button>
+          </div>
+
+          <button
+            onClick={handleDownload}
+            className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            disabled={loading}
+          >
+            {loading ? "Downloading..." : "Download Video"}
+          </button>
+        </div>
   );
 }
