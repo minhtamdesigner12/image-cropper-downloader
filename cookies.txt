@@ -25,9 +25,9 @@
 .twitter.com	TRUE	/	TRUE	0	twid	<YOUR_REAL_X_TWID>
 
 # -------------------------
-# Freetle.com cookies
+# Freetlo.com cookies
 # -------------------------
-.freetle.com	TRUE	/	TRUE	0	_tccl_visitor	<YOUR_REAL_FREETLE_VISITOR>
-.freetle.com	TRUE	/	TRUE	0	_ga_9Q6H0QETRF	<YOUR_REAL_FREETLE_GA_9Q6H0QETRF>
-.freetle.com	TRUE	/	TRUE	0	_ga	<YOUR_REAL_FREETLE_GA>
-.freetle.com	TRUE	/	TRUE	0	_ga_6DJ5XNF1HZ	<YOUR_REAL_FREETLE_GA_6DJ5XNF1HZ>
+.freetlo.com	TRUE	/	TRUE	0	_tccl_visitor	<YOUR_REAL_FREETLE_VISITOR>
+.freetlo.com	TRUE	/	TRUE	0	_ga_9Q6H0QETRF	<YOUR_REAL_FREETLE_GA_9Q6H0QETRF>
+.freetlo.com	TRUE	/	TRUE	0	_ga	<YOUR_REAL_FREETLE_GA>
+.freetlo.com	TRUE	/	TRUE	0	_ga_6DJ5XNF1HZ	<YOUR_REAL_FREETLE_GA_6DJ5XNF1HZ>
