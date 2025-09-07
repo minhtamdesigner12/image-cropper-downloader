@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "echo '⬇️ Downloading yt-dlp binary...' && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ./backend/yt-dlp && chmod +x ./backend/yt-dlp && echo '✅ yt-dlp installed'"
+    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ./backend/yt-dlp && chmod +x ./backend/yt-dlp"
   },
   "dependencies": {
     "cors": "^2.8.5",
