@@ -1,8 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const YtDlpWrap = require("yt-dlp-wrap").default;
 const fs = require("fs");
+const YtDlpWrap = require("yt-dlp-wrap").default;
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -39,7 +39,7 @@ app.post("/download", async (req, res) => {
   if (!url) return res.status(400).json({ error: "No URL provided" });
 
   const fileName = `video_${Date.now()}.mp4`;
-  const tmpFile = path.join("/tmp", `tmp_${Date.now()}.mp4`); // Writable path in Railway
+  const tmpFile = path.join("/tmp", `tmp_${Date.now()}.mp4`); // writable on Railway
 
   // Optional: use cookies for restricted videos
   const cookiesPath = path.join(__dirname, "..", "cookies.txt");
@@ -53,17 +53,25 @@ app.post("/download", async (req, res) => {
 
   try {
     console.log("🎬 Starting download for:", url);
-    await ytdlp.exec(args); // Download video fully to temp file
+    await ytdlp.exec(args);
+
+    // Check if file was actually created
+    if (!fs.existsSync(tmpFile)) {
+      console.error("❌ Video download failed: file not created");
+      return res.status(500).json({ error: "Video download failed: file not created" });
+    }
 
     console.log("✅ Download completed, sending file to client");
     res.download(tmpFile, fileName, (err) => {
       if (err) console.error("❌ Error sending file:", err);
+      // Cleanup
       try { fs.unlinkSync(tmpFile); } catch {}
     });
 
   } catch (err) {
     console.error("💥 yt-dlp failed:", err);
-    if (!res.headersSent) res.status(500).json({ error: err.message });
+    const errMsg = err?.stderr?.toString() || err?.message || "Unknown error";
+    if (!res.headersSent) res.status(500).json({ error: `yt-dlp failed: ${errMsg}` });
   }
 });
 
