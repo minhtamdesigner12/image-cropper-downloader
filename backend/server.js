@@ -39,7 +39,7 @@ app.post("/download", async (req, res) => {
   if (!url) return res.status(400).json({ error: "No URL provided" });
 
   const fileName = `video_${Date.now()}.mp4`;
-  const tmpFile = path.join(__dirname, "..", `tmp_${Date.now()}.mp4`);
+  const tmpFile = path.join("/tmp", `tmp_${Date.now()}.mp4`); // Writable path in Railway
 
   // Optional: use cookies for restricted videos
   const cookiesPath = path.join(__dirname, "..", "cookies.txt");
@@ -53,12 +53,11 @@ app.post("/download", async (req, res) => {
 
   try {
     console.log("🎬 Starting download for:", url);
-    await ytdlp.exec(args); // Download to temp file
+    await ytdlp.exec(args); // Download video fully to temp file
 
     console.log("✅ Download completed, sending file to client");
     res.download(tmpFile, fileName, (err) => {
       if (err) console.error("❌ Error sending file:", err);
-      // Clean up temp file
       try { fs.unlinkSync(tmpFile); } catch {}
     });
 
