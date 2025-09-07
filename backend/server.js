@@ -1,4 +1,3 @@
-// backend/server.js
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -11,7 +10,6 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Path to yt-dlp binary
 // ----------------------------
-// Binary should be in project root as "yt-dlp_linux"
 const binaryPath = path.join(__dirname, "..", "yt-dlp_linux");
 const ytdlp = new YtDlpWrap(binaryPath);
 
@@ -44,17 +42,11 @@ app.post("/download", (req, res) => {
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   res.setHeader("Content-Type", "video/mp4");
 
-  // Optional: Path to cookies.txt for restricted videos
+  // Optional: use cookies for restricted videos
   const cookiesPath = path.join(__dirname, "..", "cookies.txt");
   const useCookies = fs.existsSync(cookiesPath);
 
-  const args = [
-    "-f", "mp4/best",
-    "-o", "-",
-    "--no-playlist",
-    url
-  ];
-
+  const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
   if (useCookies) {
     args.push("--cookies", cookiesPath);
     console.log("🍪 Using cookies from:", cookiesPath);
@@ -79,7 +71,7 @@ app.post("/download", (req, res) => {
     stream.on("stdout", (chunk) => console.log("yt-dlp stdout chunk:", chunk.length, "bytes"));
 
     stream.on("close", (code) => {
-      console.log("yt-dlp exited with code:", code);
+      console.log("yt-dlp exited with code:", code ?? "undefined");
       if (!res.finished) res.end();
     });
 
@@ -93,9 +85,8 @@ app.post("/download", (req, res) => {
       console.log("Client disconnected — stopping yt-dlp");
       try { stream.destroy(); } catch {}
     });
-
   } catch (err) {
-    console.error("Download failed (catch):", err);
+    console.error("Download failed:", err);
     if (!res.headersSent) res.status(500).json({ error: err.message || err });
   }
 });
