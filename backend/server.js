@@ -18,9 +18,10 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Cross-platform ffmpeg path
 // ----------------------------
-const ffmpegPath = process.platform === "darwin"
-  ? "/opt/homebrew/bin/ffmpeg"
-  : path.join(__dirname, "..", "ffmpeg");
+const ffmpegPath =
+  process.platform === "darwin"
+    ? "/opt/homebrew/bin/ffmpeg"
+    : path.join(__dirname, "..", "ffmpeg");
 
 // ----------------------------
 // yt-dlp binary path
@@ -40,11 +41,13 @@ const ytdlp = new YtDlpWrap(ytdlpPath);
 // ----------------------------
 // Middleware
 // ----------------------------
-app.use(cors({
-  origin: ["https://freetlo.com", "http://localhost:3000"],
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+app.use(
+  cors({
+    origin: ["https://freetlo.com", "http://localhost:3000"],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json({ limit: "50mb" }));
 app.options("*", cors());
 
@@ -59,7 +62,8 @@ app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 function getPlatformOptions(url) {
   const hostname = urlModule.parse(url).hostname || "";
   let referer = "";
-  let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  let ua =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
   if (hostname.includes("x.com") || hostname.includes("twitter.com")) {
     referer = "https://x.com/";
@@ -69,7 +73,10 @@ function getPlatformOptions(url) {
     referer = "https://www.instagram.com/";
   } else if (hostname.includes("tiktok.com")) {
     referer = "https://www.tiktok.com/";
-  } else if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
+  } else if (
+    hostname.includes("youtube.com") ||
+    hostname.includes("youtu.be")
+  ) {
     // Skip YouTube for now
     return null;
   }
@@ -80,13 +87,15 @@ function getPlatformOptions(url) {
 // ----------------------------
 // Download route
 // ----------------------------
-app.post("/download", async (req, res) => {
+app.post("/api/download", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
 
   const platformOptions = getPlatformOptions(url);
   if (!platformOptions) {
-    return res.status(403).json({ error: "YouTube downloads are skipped to avoid bot detection" });
+    return res
+      .status(403)
+      .json({ error: "YouTube downloads are skipped to avoid bot detection" });
   }
 
   const { referer, ua } = platformOptions;
@@ -94,50 +103,87 @@ app.post("/download", async (req, res) => {
 
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
 
+  // Step 1: Get metadata first (title, ext)
+  let fileName = `video_${Date.now()}.mp4`;
+  try {
+    const jsonOut = await ytdlp.execPromise([
+      "--dump-json",
+      "--no-playlist",
+      "--user-agent",
+      ua,
+      "--referer",
+      referer,
+      url,
+    ]);
+    const meta = JSON.parse(jsonOut);
+    if (meta && meta.title) {
+      fileName =
+        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) +
+        ".mp4";
+    }
+  } catch (metaErr) {
+    console.warn("⚠️ Failed to fetch metadata, fallback to default name.");
+  }
+
+  // Step 2: Download video
   const args = [
-    "-f", "mp4/best",
+    "-f",
+    "mp4/best",
     "--no-playlist",
-    "--ffmpeg-location", ffmpegPath,
+    "--ffmpeg-location",
+    ffmpegPath,
     "--no-check-certificate",
     "--rm-cache-dir",
-    "--user-agent", ua,
-    "--referer", referer,
+    "--user-agent",
+    ua,
+    "--referer",
+    referer,
     url,
-    "-o", tmpFilePath
+    "-o",
+    tmpFilePath,
   ];
 
   try {
     await ytdlp.exec(args);
 
     if (!fs.existsSync(tmpFilePath)) {
-      return res.status(500).json({ error: "Video file was not created. Possibly blocked by the platform." });
+      return res.status(500).json({
+        error: "Video file was not created. Possibly blocked by the platform.",
+      });
     }
 
-    res.download(tmpFilePath, `video_${Date.now()}.mp4`, (err) => {
+    res.download(tmpFilePath, fileName, (err) => {
       if (err) console.error("❌ Error sending file:", err);
       fs.unlink(tmpFilePath, () => {});
     });
   } catch (err) {
     console.error("❌ Download failed:", err.stderr || err.message || err);
 
-    const blocked = (err.stderr && (
-      err.stderr.includes("403") || err.stderr.includes("Sign in to confirm you’re not a bot")
-    )) || (err.message && err.message.includes("403"));
+    const blocked =
+      (err.stderr &&
+        (err.stderr.includes("403") ||
+          err.stderr.includes("Sign in to confirm you’re not a bot"))) ||
+      (err.message && err.message.includes("403"));
 
     if (!res.headersSent) {
       res.status(blocked ? 403 : 500).json({
         error: blocked
           ? "Download blocked by platform. Try a public video."
-          : "yt-dlp failed: " + (err.stderr || err.message || "Unknown error")
+          : "yt-dlp failed: " +
+            (err.stderr || err.message || "Unknown error"),
       });
     }
 
-    try { fs.unlink(tmpFilePath, () => {}); } catch {}
+    try {
+      fs.unlink(tmpFilePath, () => {});
+    } catch {}
   }
 
   req.on("close", () => {
     console.log("⚡ Client disconnected — cleaning temp file");
-    try { fs.unlink(tmpFilePath, () => {}); } catch {}
+    try {
+      fs.unlink(tmpFilePath, () => {});
+    } catch {}
   });
 });
 

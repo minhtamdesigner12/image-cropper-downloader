@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://image-cropper-downloader-production.up.railway.app/download";
+  "https://image-cropper-downloader-production.up.railway.app/api/download";
 
 export default function DownloaderPane() {
   const [url, setUrl] = useState("");
@@ -39,11 +39,14 @@ export default function DownloaderPane() {
         throw new Error(`Download failed: ${errText}`);
       }
 
+      // Extract filename from Content-Disposition header
       const blob = await res.blob();
-
-      const urlParts = url.split("/");
-      let fileName = urlParts[urlParts.length - 1].split("?")[0];
-      if (!fileName || !fileName.endsWith(".mp4")) fileName = "video.mp4";
+      const cdHeader = res.headers.get("Content-Disposition");
+      let fileName = "video.mp4";
+      if (cdHeader) {
+        const match = cdHeader.match(/filename="(.+)"/);
+        if (match && match[1]) fileName = match[1];
+      }
 
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -60,33 +63,33 @@ export default function DownloaderPane() {
   };
 
   return (
-        <div className="space-y-3">
-          {/* 🔹 Input + Paste button same row */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Paste video URL (YouTube, TikTok, Instagram, X.com)"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="flex-1 border px-3 py-2 rounded"
-              disabled={loading}
-            />
-            <button
-              onClick={handlePaste}
-              className="px-4 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center"
-              disabled={loading}
-            >
-              Paste URL
-            </button>
-          </div>
+    <div className="space-y-3">
+      {/* 🔹 Input + Paste button same row */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Paste video URL (Facebook, TikTok, Instagram, X.com)"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          className="flex-1 border px-3 py-2 rounded"
+          disabled={loading}
+        />
+        <button
+          onClick={handlePaste}
+          className="px-4 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center"
+          disabled={loading}
+        >
+          Paste URL
+        </button>
+      </div>
 
-          <button
-            onClick={handleDownload}
-            className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            disabled={loading}
-          >
-            {loading ? "Downloading..." : "Download Video"}
-          </button>
-        </div>
+      <button
+        onClick={handleDownload}
+        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+        disabled={loading}
+      >
+        {loading ? "Downloading..." : "Download Video"}
+      </button>
+    </div>
   );
 }
