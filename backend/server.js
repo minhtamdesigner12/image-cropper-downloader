@@ -10,7 +10,8 @@ const YtDlpWrap = require("yt-dlp-wrap").default;
 // ----------------------------
 // Setup yt-dlp + ffmpeg paths
 // ----------------------------
-const binaryPath = path.join(__dirname, "..", "yt-dlp");
+
+const binaryPath = path.join(__dirname, "yt-dlp");  // stays inside backend/
 const ytdlp = new YtDlpWrap(binaryPath);
 
 // Ensure PATH includes project root (so ffmpeg works if installed locally)
