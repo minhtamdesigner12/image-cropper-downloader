@@ -1,6 +1,6 @@
 // backend/server.js
 // ----------------------------
-// Express backend for yt-dlp streaming (Linux standalone binary)
+// Express backend for yt-dlp streaming using yt-dlp_linux
 // Supports authenticated downloads via cookies.txt
 // ----------------------------
 
@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Path to yt-dlp binary
 // ----------------------------
-const binaryPath = path.join(__dirname, "..", "yt-dlp_linux"); // Linux binary for Railway
+const binaryPath = path.join(__dirname, "..", "yt-dlp_linux"); // should exist and be executable
 if (!fs.existsSync(binaryPath)) {
   console.error("❌ yt-dlp binary not found:", binaryPath);
   process.exit(1);
@@ -53,8 +53,8 @@ app.post("/download", async (req, res) => {
   // Temp file path
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
 
-  // Cookies
-  const cookiesPath = path.join(__dirname, "..", "cookies.txt");
+  // Cookies (optional for YouTube/X)
+  const cookiesPath = path.join(__dirname, "cookies.txt");
   const useCookies = fs.existsSync(cookiesPath);
 
   // yt-dlp arguments
@@ -65,20 +65,18 @@ app.post("/download", async (req, res) => {
   }
 
   try {
-    // Use exec() to download directly to file
+    // Download video
     await ytdlp.exec(args);
 
-    // Check if file was created
     if (!fs.existsSync(tmpFilePath)) {
       console.error("❌ Video file not created:", tmpFilePath);
       return res.status(500).json({ error: "Video download failed: file not created" });
     }
 
-    // Send file to client
+    // Send file
     res.download(tmpFilePath, `video_${Date.now()}.mp4`, (err) => {
       if (err) console.error("❌ Error sending file:", err);
-      // Delete temp file after sending
-      fs.unlink(tmpFilePath, () => {});
+      fs.unlink(tmpFilePath, () => {}); // delete temp file
     });
   } catch (err) {
     console.error("❌ Download failed:", err);
@@ -87,9 +85,9 @@ app.post("/download", async (req, res) => {
     }
   }
 
-  // Handle client disconnect safely
+  // Cleanup on client disconnect
   req.on("close", () => {
-    console.log("⚡ Client disconnected — stopping yt-dlp");
+    console.log("⚡ Client disconnected — cleaning temp file");
     try { fs.unlink(tmpFilePath, () => {}); } catch {}
   });
 });
@@ -100,22 +98,3 @@ app.post("/download", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
-
-/*
---------------------------------------
-✅ Notes for GitHub & Railway
-
-1. Make sure yt-dlp_linux exists in project root:
-   image-cropper-downloader/yt-dlp_linux
-
-2. Make sure cookies.txt exists in project root (optional for YouTube & Twitter):
-   image-cropper-downloader/cookies.txt
-
-3. Push changes to GitHub:
-   git add backend/server.js yt-dlp_linux cookies.txt
-   git commit -m "Fix download route: file output and cookies"
-   git push origin main
-
-4. Railway will auto-rebuild your container and include yt-dlp_linux + cookies.txt.
---------------------------------------
-*/

@@ -1,0 +1,25 @@
+# Netscape HTTP Cookie File
+# http://curl.haxx.se/rfc/cookie_spec.html
+# Generated for yt-dlp usage
+
+# -------------------------
+# YouTube / Google cookies
+# -------------------------
+.youtube.com	TRUE	/	TRUE	0	SID	<YOUR_REAL_YOUTUBE_SID>
+.youtube.com	TRUE	/	TRUE	0	HSID	<YOUR_REAL_YOUTUBE_HSID>
+.youtube.com	TRUE	/	TRUE	0	SSID	<YOUR_REAL_YOUTUBE_SSID>
+.youtube.com	TRUE	/	TRUE	0	APISID	<YOUR_REAL_YOUTUBE_APISID>
+.youtube.com	TRUE	/	TRUE	0	SAPISID	<YOUR_REAL_YOUTUBE_SAPISID>
+
+# -------------------------
+# Facebook cookies
+# -------------------------
+.facebook.com	TRUE	/	TRUE	0	fr	<YOUR_REAL_FACEBOOK_FR>
+.facebook.com	TRUE	/	TRUE	0	c_user	<YOUR_REAL_FACEBOOK_C_USER>
+.facebook.com	TRUE	/	TRUE	0	xs	<YOUR_REAL_FACEBOOK_XS>
+
+# -------------------------
+# X.com / Twitter cookies
+# -------------------------
+.twitter.com	TRUE	/	TRUE	0	auth_token	<YOUR_REAL_X_AUTH_TOKEN>
+.twitter.com	TRUE	/	TRUE	0	twid	<YOUR_REAL_X_TWID>
