@@ -12,21 +12,19 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Cross-platform ffmpeg path
 // ----------------------------
-const ffmpegPath =
-  process.platform === "darwin"
-    ? "/opt/homebrew/bin/ffmpeg"
-    : path.join(__dirname, "..", "ffmpeg");
+const ffmpegPath = path.join(__dirname, "ffmpeg"); // Railway / Linux
+
+if (!fs.existsSync(ffmpegPath)) {
+  console.error("❌ ffmpeg binary not found:", ffmpegPath);
+  process.exit(1);
+}
 
 // ----------------------------
 // yt-dlp binary path
 // ----------------------------
-const ytdlpPath = path.join(__dirname, "..", "yt-dlp_linux");
+const ytdlpPath = path.join(__dirname, "yt-dlp"); // downloaded in backend/
 if (!fs.existsSync(ytdlpPath)) {
   console.error("❌ yt-dlp binary not found:", ytdlpPath);
-  process.exit(1);
-}
-if (!fs.existsSync(ffmpegPath)) {
-  console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
 }
 
@@ -145,8 +143,7 @@ app.post("/api/download", async (req, res) => {
       res.status(blocked ? 403 : 500).json({
         error: blocked
           ? "Download blocked by platform. Try a public video."
-          : "yt-dlp failed: " +
-            (err.stderr || err.message || "Unknown error"),
+          : "yt-dlp failed: " + (err.stderr || err.message || "Unknown error"),
       });
     }
 
