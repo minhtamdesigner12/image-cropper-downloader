@@ -1,3 +1,4 @@
+// backend/server.js
 // ----------------------------
 // Simple streaming backend for yt-dlp (yt-dlp-wrap v2.x)
 // ----------------------------
@@ -6,18 +7,16 @@ const cors = require("cors");
 const path = require("path");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 
-// ----------------------------
-// Setup yt-dlp binary path
-// ----------------------------
-const binaryPath = path.join(__dirname, "yt-dlp"); // downloaded in postinstall
-const ytdlp = new YtDlpWrap(binaryPath);
-
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// Middleware
+// Setup yt-dlp binary
 // ----------------------------
+// Postinstall saves binary into backend/yt-dlp
+const binaryPath = path.join(__dirname, "yt-dlp");
+const ytdlp = new YtDlpWrap(binaryPath);
+
 app.use(
   cors({
     origin: ["https://freetlo.com", "http://localhost:3000"],
@@ -39,61 +38,59 @@ app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 app.post("/download", (req, res) => {
   const { url } = req.body;
   if (!url) {
-    console.warn("❌ No URL provided");
+    console.warn("⚠️ No URL provided");
     return res.status(400).json({ error: "No URL provided" });
   }
 
-  console.log("🚀 Starting download for:", url);
+  console.log("▶️ Starting download for:", url);
 
   const fileName = `video_${Date.now()}.mp4`;
-  res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   res.setHeader("Content-Type", "video/mp4");
 
   try {
-    // ✅ Force yt-dlp to stream video to stdout
+    // yt-dlp-wrap v2.x: execStream returns a readable stream
     const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
-    console.log("🛠️ yt-dlp args:", args.join(" "));
+    console.log("▶️ yt-dlp args:", args.join(" "));
 
-    const proc = ytdlp.execStream(args);
+    const stream = ytdlp.execStream(args);
 
-    // pipe stdout → response
-    proc.stdout.pipe(res);
+    // ✅ Pipe stream → response
+    stream.pipe(res);
 
-    // log stderr for debugging
-    proc.stderr.on("data", (chunk) => {
-      const msg = chunk.toString().trim();
-      if (msg) console.error("⚠️ yt-dlp stderr:", msg);
+    // Debug yt-dlp events
+    stream.on("ytDlpEvent", (type, data) => {
+      const msg = data?.toString?.().trim();
+      if (msg) console.log(`[yt-dlp ${type}] ${msg}`);
     });
 
-    proc.on("close", (code) => {
-      console.log("✅ yt-dlp exited with code:", code);
+    // When yt-dlp exits
+    stream.on("close", (code) => {
+      console.log("✅ yt-dlp closed with code:", code);
       if (!res.finished) res.end();
     });
 
-    proc.on("error", (err) => {
-      console.error("❌ yt-dlp process error:", err);
+    // Handle errors
+    stream.on("error", (err) => {
+      console.error("❌ yt-dlp stream error:", err);
       if (!res.headersSent) {
         res.status(500).json({ error: "yt-dlp failed: " + err.message });
       } else {
-        try {
-          res.end();
-        } catch {}
+        try { res.end(); } catch {}
       }
     });
 
-    // client disconnected
+    // Client disconnect
     req.on("close", () => {
-      console.log("⚡ Client disconnected — killing yt-dlp process");
-      try {
-        proc.kill("SIGKILL");
-      } catch {}
+      console.log("⚠️ Client disconnected — stopping yt-dlp");
+      try { stream.destroy(); } catch {}
     });
   } catch (err) {
     console.error("❌ Download failed (catch):", err);
     if (!res.headersSent) {
-      res
-        .status(500)
-        .json({ error: "Download failed: " + (err.message || err) });
+      res.status(500).json({
+        error: "Download failed: " + (err?.message || err),
+      });
     }
   }
 });
@@ -101,4 +98,6 @@ app.post("/download", (req, res) => {
 // ----------------------------
 // Start server
 // ----------------------------
-app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Backend running on port ${PORT}`)
+);
