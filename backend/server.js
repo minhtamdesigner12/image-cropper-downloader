@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const YtDlpWrap = require("yt-dlp-wrap").default;
+const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -10,7 +11,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // Path to yt-dlp binary
 // ----------------------------
-// Make sure the binary exists in project root as "yt-dlp_linux"
+// Binary should be in project root as "yt-dlp_linux"
 const binaryPath = path.join(__dirname, "..", "yt-dlp_linux");
 const ytdlp = new YtDlpWrap(binaryPath);
 
@@ -43,15 +44,32 @@ app.post("/download", (req, res) => {
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   res.setHeader("Content-Type", "video/mp4");
 
+  // Optional: Path to cookies.txt for restricted videos
+  const cookiesPath = path.join(__dirname, "..", "cookies.txt");
+  const useCookies = fs.existsSync(cookiesPath);
+
+  const args = [
+    "-f", "mp4/best",
+    "-o", "-",
+    "--no-playlist",
+    url
+  ];
+
+  if (useCookies) {
+    args.push("--cookies", cookiesPath);
+    console.log("🍪 Using cookies from:", cookiesPath);
+  }
+
   try {
-    const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
     const stream = ytdlp.execStream(args);
 
     if (!stream || !stream.pipe)
       return res.status(500).json({ error: "yt-dlp failed to start" });
 
+    // Pipe video to client
     stream.pipe(res);
 
+    // yt-dlp events
     stream.on("ytDlpEvent", (type, data) => {
       const msg = data?.toString?.().trim();
       if (msg) console.log(`[yt-dlp:${type}]`, msg);
@@ -75,6 +93,7 @@ app.post("/download", (req, res) => {
       console.log("Client disconnected — stopping yt-dlp");
       try { stream.destroy(); } catch {}
     });
+
   } catch (err) {
     console.error("Download failed (catch):", err);
     if (!res.headersSent) res.status(500).json({ error: err.message || err });
