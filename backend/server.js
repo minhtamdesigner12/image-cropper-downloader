@@ -1,10 +1,4 @@
 // backend/server.js
-// ----------------------------
-// Express backend for yt-dlp streaming
-// Supports public video downloads (Facebook, TikTok, X, Instagram)
-// Skips YouTube to avoid bot-detection issues
-// ----------------------------
-
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -65,21 +59,11 @@ function getPlatformOptions(url) {
   let ua =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  if (hostname.includes("x.com") || hostname.includes("twitter.com")) {
-    referer = "https://x.com/";
-  } else if (hostname.includes("facebook.com")) {
-    referer = "https://www.facebook.com/";
-  } else if (hostname.includes("instagram.com")) {
-    referer = "https://www.instagram.com/";
-  } else if (hostname.includes("tiktok.com")) {
-    referer = "https://www.tiktok.com/";
-  } else if (
-    hostname.includes("youtube.com") ||
-    hostname.includes("youtu.be")
-  ) {
-    // Skip YouTube for now
-    return null;
-  }
+  if (hostname.includes("x.com") || hostname.includes("twitter.com")) referer = "https://x.com/";
+  else if (hostname.includes("facebook.com")) referer = "https://www.facebook.com/";
+  else if (hostname.includes("instagram.com")) referer = "https://www.instagram.com/";
+  else if (hostname.includes("tiktok.com")) referer = "https://www.tiktok.com/";
+  else if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) return null;
 
   return { referer, ua };
 }
@@ -102,24 +86,21 @@ app.post("/api/download", async (req, res) => {
   console.log("🎬 Starting download for:", url);
 
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
-
-  // Step 1: Get metadata first (title, ext)
   let fileName = `video_${Date.now()}.mp4`;
+
+  // Step 1: Get metadata for nice file name
   try {
     const jsonOut = await ytdlp.execPromise([
       "--dump-json",
       "--no-playlist",
-      "--user-agent",
-      ua,
-      "--referer",
-      referer,
+      "--user-agent", ua,
+      "--referer", referer,
       url,
     ]);
     const meta = JSON.parse(jsonOut);
     if (meta && meta.title) {
       fileName =
-        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) +
-        ".mp4";
+        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) + ".mp4";
     }
   } catch (metaErr) {
     console.warn("⚠️ Failed to fetch metadata, fallback to default name.");
@@ -127,20 +108,15 @@ app.post("/api/download", async (req, res) => {
 
   // Step 2: Download video
   const args = [
-    "-f",
-    "mp4/best",
+    "-f", "mp4/best",
     "--no-playlist",
-    "--ffmpeg-location",
-    ffmpegPath,
+    "--ffmpeg-location", ffmpegPath,
     "--no-check-certificate",
     "--rm-cache-dir",
-    "--user-agent",
-    ua,
-    "--referer",
-    referer,
+    "--user-agent", ua,
+    "--referer", referer,
     url,
-    "-o",
-    tmpFilePath,
+    "-o", tmpFilePath,
   ];
 
   try {
@@ -174,16 +150,12 @@ app.post("/api/download", async (req, res) => {
       });
     }
 
-    try {
-      fs.unlink(tmpFilePath, () => {});
-    } catch {}
+    try { fs.unlink(tmpFilePath, () => {}); } catch {}
   }
 
   req.on("close", () => {
     console.log("⚡ Client disconnected — cleaning temp file");
-    try {
-      fs.unlink(tmpFilePath, () => {});
-    } catch {}
+    try { fs.unlink(tmpFilePath, () => {}); } catch {}
   });
 });
 
