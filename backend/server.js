@@ -1,6 +1,6 @@
 // backend/server.js
 // ----------------------------
-// Simple streaming backend for yt-dlp (yt-dlp-wrap v2.x)
+// Streaming backend for yt-dlp (yt-dlp-wrap v2.x)
 // ----------------------------
 const express = require("express");
 const cors = require("cors");
@@ -14,17 +14,15 @@ const YtDlpWrap = require("yt-dlp-wrap").default;
 const binaryPath = path.join(__dirname, "yt-dlp");
 console.log("🔍 Using yt-dlp binaryPath:", binaryPath);
 
-// Check if yt-dlp binary exists
 if (fs.existsSync(binaryPath)) {
   console.log("✅ yt-dlp binary exists");
 } else {
   console.warn("❌ yt-dlp binary not found at:", binaryPath);
 }
 
-// Init wrapper with explicit binary path
 const ytdlp = new YtDlpWrap(binaryPath);
 
-// Ensure PATH includes backend folder (so ffmpeg / yt-dlp work)
+// Ensure PATH includes backend folder (for yt-dlp + ffmpeg)
 process.env.PATH = (process.env.PATH || "") + path.delimiter + __dirname;
 
 // ----------------------------
@@ -61,11 +59,19 @@ app.post("/download", (req, res) => {
   console.log("▶️ Starting download for:", url);
 
   const fileName = `video_${Date.now()}.mp4`;
-  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+  res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
   res.setHeader("Content-Type", "video/mp4");
 
   try {
-    const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
+    // Force best quality, merged into mp4
+    const args = [
+      "-f", "bestvideo+bestaudio/best",
+      "--merge-output-format", "mp4",
+      "-o", "-",
+      "--no-playlist",
+      "--verbose",
+      url
+    ];
     console.log("▶️ yt-dlp args:", args.join(" "));
 
     const stream = ytdlp.execStream(args);
@@ -80,41 +86,37 @@ app.post("/download", (req, res) => {
     // Pipe stream → client
     stream.pipe(res);
 
-    // yt-dlp events
+    // yt-dlp internal events
     stream.on("ytDlpEvent", (type, data) => {
       const msg = data?.toString?.().trim();
       if (msg) console.log("[yt-dlp]", type, msg);
     });
 
-    // Debug: capture stderr as well
+    // stderr debug
     stream.on("stderr", (chunk) => {
       console.error("[yt-dlp stderr]", chunk.toString());
     });
 
-    // Process closed
+    // process closed
     stream.on("close", (code) => {
       console.log("✅ yt-dlp exited with code:", code);
       if (!res.finished) res.end();
     });
 
-    // Error handling
+    // error handling
     stream.on("error", (err) => {
       console.error("❌ yt-dlp error:", err);
       if (!res.headersSent) {
         res.status(500).json({ error: "yt-dlp failed: " + err.message });
       } else {
-        try {
-          res.end();
-        } catch {}
+        try { res.end(); } catch {}
       }
     });
 
-    // Client disconnects
+    // client disconnects
     req.on("close", () => {
       console.log("⚠️ Client disconnected — stopping yt-dlp");
-      try {
-        stream.destroy();
-      } catch {}
+      try { stream.destroy(); } catch {}
     });
   } catch (err) {
     console.error("❌ Download failed (catch):", err);
