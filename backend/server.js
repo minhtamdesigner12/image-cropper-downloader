@@ -7,15 +7,18 @@ const cors = require("cors");
 const path = require("path");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 
-// ensure local ./yt-dlp binary can be found
+// Ensure local ./yt-dlp binary is in PATH (for Railway/Hostinger)
 process.env.PATH = (process.env.PATH || "") + path.delimiter + process.cwd();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// init wrapper (v2.x)
+// Init wrapper
 const ytdlp = new YtDlpWrap();
 
+// ----------------------------
+// Middleware
+// ----------------------------
 app.use(
   cors({
     origin: ["https://freetlo.com", "http://localhost:3000"],
@@ -41,53 +44,55 @@ app.post("/download", (req, res) => {
     return res.status(400).json({ error: "No URL provided" });
   }
 
-  console.log("📥 Starting download for:", url);
+  console.log("Starting download for:", url);
 
-  // Set download filename for client
   const fileName = `video_${Date.now()}.mp4`;
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   res.setHeader("Content-Type", "video/mp4");
 
   try {
-    // ✅ execStream in v2.x returns a Readable stream directly
-    const args = ["-f", "best", "-o", "-", "--no-playlist", url];
-    console.log("▶️ yt-dlp args:", args.join(" "));
+    // ✅ Force yt-dlp to write video to stdout
+    const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
+    console.log("yt-dlp args:", args.join(" "));
 
     const stream = ytdlp.execStream(args);
 
-    // ✅ pipe stream directly to response
+    // Pipe stream → response
     stream.pipe(res);
 
-    // ✅ capture yt-dlp internal logs
-    stream.on("ytDlpEvent", (eventType, eventData) => {
-      console.log("yt-dlp event:", eventType, eventData?.toString());
+    // yt-dlp emits internal logs
+    stream.on("ytDlpEvent", (type, data) => {
+      const msg = data?.toString?.().trim();
+      if (msg) console.log("[yt-dlp]", type, msg);
     });
 
-    // ✅ handle errors
+    // Process closed
+    stream.on("close", (code) => {
+      console.log("yt-dlp exited with code:", code);
+      if (!res.finished) res.end();
+    });
+
+    // Error handling
     stream.on("error", (err) => {
-      console.error("🔥 yt-dlp stream error:", err);
+      console.error("yt-dlp error:", err);
       if (!res.headersSent) {
         res.status(500).json({ error: "yt-dlp failed: " + err.message });
       } else {
-        try { res.end(); } catch (e) {}
+        try { res.end(); } catch {}
       }
     });
 
-    // ✅ handle close
-    stream.on("close", (code) => {
-      console.log("✅ yt-dlp stream closed with code:", code);
-      try { if (!res.finished) res.end(); } catch (e) {}
-    });
-
-    // ✅ cleanup if client disconnects
+    // Client disconnects
     req.on("close", () => {
-      console.log("⚠️ Client disconnected — ending yt-dlp stream");
-      try { stream.destroy(); } catch (e) {}
+      console.log("Client disconnected — stopping yt-dlp");
+      try { stream.destroy(); } catch {}
     });
   } catch (err) {
-    console.error("💥 Download failed (catch):", err);
+    console.error("Download failed (catch):", err);
     if (!res.headersSent) {
-      res.status(500).json({ error: "Download failed: " + (err?.message || err) });
+      res.status(500).json({
+        error: "Download failed: " + (err && err.message ? err.message : err),
+      });
     }
   }
 });
@@ -95,4 +100,4 @@ app.post("/download", (req, res) => {
 // ----------------------------
 // Start server
 // ----------------------------
-app.listen(PORT, () => console.log(`🚀 Backend running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
