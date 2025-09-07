@@ -7,14 +7,16 @@ const cors = require("cors");
 const path = require("path");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 
+// Point yt-dlp-wrap to the actual binary
+// (if postinstall saves ./yt-dlp at project root)
+const binaryPath = path.join(__dirname, "..", "yt-dlp");
+const ytdlp = new YtDlpWrap(binaryPath);
+
 // Ensure local ./yt-dlp binary is in PATH (for Railway/Hostinger)
 process.env.PATH = (process.env.PATH || "") + path.delimiter + process.cwd();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-
-// Init wrapper
-const ytdlp = new YtDlpWrap();
 
 // ----------------------------
 // Middleware
@@ -52,7 +54,7 @@ app.post("/download", (req, res) => {
 
   try {
     // ✅ Force yt-dlp to write video to stdout
-    const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
+    const args = ["-v", "-f", "mp4/best", "-o", "-", "--no-playlist", url];
     console.log("yt-dlp args:", args.join(" "));
 
     const stream = ytdlp.execStream(args);
