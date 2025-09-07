@@ -5,29 +5,29 @@
 # -------------------------
 # YouTube / Google cookies
 # -------------------------
-.youtube.com	TRUE	/	FALSE	0	SID	YOUR_YOUTUBE_SID
-.youtube.com	TRUE	/	FALSE	0	HSID	YOUR_YOUTUBE_HSID
-.youtube.com	TRUE	/	FALSE	0	SSID	YOUR_YOUTUBE_SSID
-.youtube.com	TRUE	/	FALSE	0	APISID	YOUR_YOUTUBE_APISID
-.youtube.com	TRUE	/	FALSE	0	SAPISID	YOUR_YOUTUBE_SAPISID
+.youtube.com	TRUE	/	TRUE	0	SID	<YOUR_REAL_YOUTUBE_SID>
+.youtube.com	TRUE	/	TRUE	0	HSID	<YOUR_REAL_YOUTUBE_HSID>
+.youtube.com	TRUE	/	TRUE	0	SSID	<YOUR_REAL_YOUTUBE_SSID>
+.youtube.com	TRUE	/	TRUE	0	APISID	<YOUR_REAL_YOUTUBE_APISID>
+.youtube.com	TRUE	/	TRUE	0	SAPISID	<YOUR_REAL_YOUTUBE_SAPISID>
 
 # -------------------------
 # Facebook cookies
 # -------------------------
-.facebook.com	TRUE	/	FALSE	0	fr	YOUR_FACEBOOK_FR
-.facebook.com	TRUE	/	FALSE	0	c_user	YOUR_FACEBOOK_C_USER
-.facebook.com	TRUE	/	FALSE	0	xs	YOUR_FACEBOOK_XS
+.facebook.com	TRUE	/	TRUE	0	fr	<YOUR_REAL_FACEBOOK_FR>
+.facebook.com	TRUE	/	TRUE	0	c_user	<YOUR_REAL_FACEBOOK_C_USER>
+.facebook.com	TRUE	/	TRUE	0	xs	<YOUR_REAL_FACEBOOK_XS>
 
 # -------------------------
 # X.com / Twitter cookies
 # -------------------------
-.twitter.com	TRUE	/	FALSE	0	auth_token	YOUR_X_AUTH_TOKEN
-.twitter.com	TRUE	/	FALSE	0	twid	YOUR_X_TWID
+.twitter.com	TRUE	/	TRUE	0	auth_token	<YOUR_REAL_X_AUTH_TOKEN>
+.twitter.com	TRUE	/	TRUE	0	twid	<YOUR_REAL_X_TWID>
 
 # -------------------------
 # Freetle.com cookies
 # -------------------------
-.freetle.com	TRUE	/	TRUE	0	_tccl_visitor	YOUR_FREETLE_VISITOR
-.freetle.com	TRUE	/	FALSE	0	_ga_9Q6H0QETRF	YOUR_FREETLE_GA_9Q6H0QETRF
-.freetle.com	TRUE	/	FALSE	0	_ga	YOUR_FREETLE_GA
-.freetle.com	TRUE	/	FALSE	0	_ga_6DJ5XNF1HZ	YOUR_FREETLE_GA_6DJ5XNF1HZ
+.freetle.com	TRUE	/	TRUE	0	_tccl_visitor	<YOUR_REAL_FREETLE_VISITOR>
+.freetle.com	TRUE	/	TRUE	0	_ga_9Q6H0QETRF	<YOUR_REAL_FREETLE_GA_9Q6H0QETRF>
+.freetle.com	TRUE	/	TRUE	0	_ga	<YOUR_REAL_FREETLE_GA>
+.freetle.com	TRUE	/	TRUE	0	_ga_6DJ5XNF1HZ	<YOUR_REAL_FREETLE_GA_6DJ5XNF1HZ>
