@@ -1,21 +1,25 @@
 // backend/server.js
 // ----------------------------
-// yt-dlp streaming backend with debug logging
+// Express backend for yt-dlp streaming (using standalone binary)
 // ----------------------------
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 
+// ----------------------------
+// Setup yt-dlp binary path
+// ----------------------------
+// We install yt-dlp_linux into project root during postinstall
+const binaryPath = path.join(__dirname, "..", "yt-dlp");
+const ytdlp = new YtDlpWrap(binaryPath);
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// Setup yt-dlp binary (downloaded in backend/yt-dlp by postinstall)
+// Middleware
 // ----------------------------
-const binaryPath = path.join(__dirname, "yt-dlp");
-const ytdlp = new YtDlpWrap(binaryPath);
-
 app.use(
   cors({
     origin: ["https://freetlo.com", "http://localhost:3000"],
@@ -41,37 +45,46 @@ app.post("/download", (req, res) => {
     return res.status(400).json({ error: "No URL provided" });
   }
 
-  console.log("▶️ Starting download for:", url);
+  console.log("🎬 Starting download for:", url);
 
   const fileName = `video_${Date.now()}.mp4`;
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
   res.setHeader("Content-Type", "video/mp4");
 
   try {
-    // Use "best" for safer compatibility
-    const args = ["-f", "best", "-o", "-", "--no-playlist", url];
+    // ✅ Force yt-dlp to stream video → stdout
+    const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
     console.log("▶️ yt-dlp args:", args.join(" "));
 
     const stream = ytdlp.execStream(args);
 
-    // ✅ Pipe yt-dlp stream → HTTP response
+    if (!stream || !stream.pipe) {
+      console.error("❌ execStream did not return a valid stream");
+      return res.status(500).json({ error: "yt-dlp failed to start" });
+    }
+
+    // Pipe video stream to client
     stream.pipe(res);
 
-    // 🔎 Debug: log yt-dlp events
+    // yt-dlp emits internal events/logs
     stream.on("ytDlpEvent", (type, data) => {
       const msg = data?.toString?.().trim();
-      if (msg) console.log(`[yt-dlp ${type}] ${msg}`);
+      if (msg) console.log(`[yt-dlp:${type}]`, msg);
     });
 
-    // 🔎 Debug: log raw data (stderr & progress info)
-    stream.on("data", (chunk) => {
-      const msg = chunk?.toString?.().trim();
-      if (msg) console.log("[yt-dlp data]", msg);
+    // Debug stderr logs
+    stream.on("stderr", (chunk) => {
+      console.error("🐛 yt-dlp stderr:", chunk.toString());
+    });
+
+    // Debug stdout logs (small chunks only)
+    stream.on("stdout", (chunk) => {
+      console.log("📥 yt-dlp stdout chunk:", chunk.length, "bytes");
     });
 
     // Process closed
     stream.on("close", (code) => {
-      console.log("✅ yt-dlp closed with code:", code);
+      console.log("✅ yt-dlp exited with code:", code);
       if (!res.finished) res.end();
     });
 
@@ -81,17 +94,21 @@ app.post("/download", (req, res) => {
       if (!res.headersSent) {
         res.status(500).json({ error: "yt-dlp failed: " + err.message });
       } else {
-        try { res.end(); } catch {}
+        try {
+          res.end();
+        } catch {}
       }
     });
 
-    // Handle client disconnect
+    // Client disconnects
     req.on("close", () => {
-      console.log("⚠️ Client disconnected — stopping yt-dlp");
-      try { stream.destroy(); } catch {}
+      console.log("⚡ Client disconnected — stopping yt-dlp");
+      try {
+        stream.destroy();
+      } catch {}
     });
   } catch (err) {
-    console.error("❌ Download failed (catch):", err);
+    console.error("💥 Download failed (catch):", err);
     if (!res.headersSent) {
       res.status(500).json({
         error: "Download failed: " + (err?.message || err),
@@ -104,5 +121,5 @@ app.post("/download", (req, res) => {
 // Start server
 // ----------------------------
 app.listen(PORT, () =>
-  console.log(`🚀 Backend running on port ${PORT}`)
+  console.log(`🚀 Backend running on http://localhost:${PORT}`)
 );
