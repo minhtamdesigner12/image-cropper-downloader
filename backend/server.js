@@ -34,60 +34,37 @@ app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 // ----------------------------
 // Download route
 // ----------------------------
-app.post("/download", (req, res) => {
+app.post("/download", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
 
   const fileName = `video_${Date.now()}.mp4`;
-  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-  res.setHeader("Content-Type", "video/mp4");
+  const tmpFile = path.join(__dirname, "..", `tmp_${Date.now()}.mp4`);
 
   // Optional: use cookies for restricted videos
   const cookiesPath = path.join(__dirname, "..", "cookies.txt");
   const useCookies = fs.existsSync(cookiesPath);
 
-  const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
+  const args = ["-f", "mp4/best", "-o", tmpFile, "--no-playlist", url];
   if (useCookies) {
     args.push("--cookies", cookiesPath);
     console.log("🍪 Using cookies from:", cookiesPath);
   }
 
   try {
-    const stream = ytdlp.execStream(args);
+    console.log("🎬 Starting download for:", url);
+    await ytdlp.exec(args); // Download to temp file
 
-    if (!stream || !stream.pipe)
-      return res.status(500).json({ error: "yt-dlp failed to start" });
-
-    // Pipe video to client
-    stream.pipe(res);
-
-    // yt-dlp events
-    stream.on("ytDlpEvent", (type, data) => {
-      const msg = data?.toString?.().trim();
-      if (msg) console.log(`[yt-dlp:${type}]`, msg);
+    console.log("✅ Download completed, sending file to client");
+    res.download(tmpFile, fileName, (err) => {
+      if (err) console.error("❌ Error sending file:", err);
+      // Clean up temp file
+      try { fs.unlinkSync(tmpFile); } catch {}
     });
 
-    stream.on("stderr", (chunk) => console.error("yt-dlp stderr:", chunk.toString()));
-    stream.on("stdout", (chunk) => console.log("yt-dlp stdout chunk:", chunk.length, "bytes"));
-
-    stream.on("close", (code) => {
-      console.log("yt-dlp exited with code:", code ?? "undefined");
-      if (!res.finished) res.end();
-    });
-
-    stream.on("error", (err) => {
-      console.error("yt-dlp stream error:", err);
-      if (!res.headersSent) res.status(500).json({ error: err.message });
-      else res.end();
-    });
-
-    req.on("close", () => {
-      console.log("Client disconnected — stopping yt-dlp");
-      try { stream.destroy(); } catch {}
-    });
   } catch (err) {
-    console.error("Download failed:", err);
-    if (!res.headersSent) res.status(500).json({ error: err.message || err });
+    console.error("💥 yt-dlp failed:", err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
   }
 });
 

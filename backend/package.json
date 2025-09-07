@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "postinstall": "echo '⬇️ Installing yt-dlp standalone binary...' && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o ./yt-dlp && chmod +x ./yt-dlp && echo '✅ yt-dlp installed'"
+    "start": "node backend/server.js",
+    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o yt-dlp_linux && chmod +x yt-dlp_linux"
   },
   "dependencies": {
     "cors": "^2.8.5",
