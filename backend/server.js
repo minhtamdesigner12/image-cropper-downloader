@@ -76,36 +76,36 @@ app.post("/download", async (req, res) => {
     console.log("🍪 Using cookies from:", cookiesPath);
   }
 
-  const downloadVideo = async (attempt = 1) => {
-    try {
-      console.log(`⬇️ Attempt ${attempt} to download video`);
-      await ytdlp.exec(args);
+  try {
+    await ytdlp.exec(args);
 
-      if (!fs.existsSync(tmpFilePath)) throw new Error("Video file not created");
+    if (!fs.existsSync(tmpFilePath)) {
+      return res.status(500).json({ error: "Video file was not created. Possibly blocked by YouTube." });
+    }
 
-      res.download(tmpFilePath, `video_${Date.now()}.mp4`, (err) => {
-        if (err) console.error("❌ Error sending file:", err);
-        fs.unlink(tmpFilePath, () => {});
-      });
-    } catch (err) {
-      console.error(`❌ Attempt ${attempt} failed:`, err.stderr || err.message || err);
-      const is403 = err.stderr?.includes("403") || (err.message && err.message.includes("403"));
+    res.download(tmpFilePath, `video_${Date.now()}.mp4`, (err) => {
+      if (err) console.error("❌ Error sending file:", err);
+      fs.unlink(tmpFilePath, () => {});
+    });
+  } catch (err) {
+    console.error("❌ Download failed:", err.stderr || err.message || err);
 
-      if (is403 && attempt < 2) {
-        console.log("⚡ 403 detected — retrying with cookies if available");
-        if (!useCookies && fs.existsSync(cookiesPath)) args.push("--cookies", cookiesPath);
-        await downloadVideo(attempt + 1);
+    // Detect YouTube bot block
+    const botBlock = err.stderr?.includes("Sign in to confirm you’re not a bot") || err.stderr?.includes("403") || err.message?.includes("403");
+
+    if (!res.headersSent) {
+      if (botBlock) {
+        res.status(403).json({
+          error: "YouTube blocked the download. Try using cookies or a proxy to bypass bot detection.",
+        });
       } else {
-        if (!res.headersSent) {
-          const errorMsg = is403 ? "Download blocked (403)" : err.stderr || err.message || "Unknown error";
-          res.status(500).json({ error: "yt-dlp failed: " + errorMsg });
-        }
-        try { fs.unlink(tmpFilePath, () => {}); } catch {}
+        res.status(500).json({
+          error: "yt-dlp failed: " + (err.stderr || err.message || "Unknown error"),
+        });
       }
     }
-  };
-
-  await downloadVideo();
+    try { fs.unlink(tmpFilePath, () => {}); } catch {}
+  }
 
   req.on("close", () => {
     console.log("⚡ Client disconnected — cleaning temp file");
