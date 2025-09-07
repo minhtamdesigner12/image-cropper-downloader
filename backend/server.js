@@ -1,6 +1,6 @@
 // backend/server.js
 // ----------------------------
-// Simple streaming backend for yt-dlp (yt-dlp-wrap v2.x)
+// yt-dlp streaming backend with debug logging
 // ----------------------------
 const express = require("express");
 const cors = require("cors");
@@ -11,9 +11,8 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// Setup yt-dlp binary
+// Setup yt-dlp binary (downloaded in backend/yt-dlp by postinstall)
 // ----------------------------
-// Postinstall saves binary into backend/yt-dlp
 const binaryPath = path.join(__dirname, "yt-dlp");
 const ytdlp = new YtDlpWrap(binaryPath);
 
@@ -49,28 +48,34 @@ app.post("/download", (req, res) => {
   res.setHeader("Content-Type", "video/mp4");
 
   try {
-    // yt-dlp-wrap v2.x: execStream returns a readable stream
-    const args = ["-f", "mp4/best", "-o", "-", "--no-playlist", url];
+    // Use "best" for safer compatibility
+    const args = ["-f", "best", "-o", "-", "--no-playlist", url];
     console.log("▶️ yt-dlp args:", args.join(" "));
 
     const stream = ytdlp.execStream(args);
 
-    // ✅ Pipe stream → response
+    // ✅ Pipe yt-dlp stream → HTTP response
     stream.pipe(res);
 
-    // Debug yt-dlp events
+    // 🔎 Debug: log yt-dlp events
     stream.on("ytDlpEvent", (type, data) => {
       const msg = data?.toString?.().trim();
       if (msg) console.log(`[yt-dlp ${type}] ${msg}`);
     });
 
-    // When yt-dlp exits
+    // 🔎 Debug: log raw data (stderr & progress info)
+    stream.on("data", (chunk) => {
+      const msg = chunk?.toString?.().trim();
+      if (msg) console.log("[yt-dlp data]", msg);
+    });
+
+    // Process closed
     stream.on("close", (code) => {
       console.log("✅ yt-dlp closed with code:", code);
       if (!res.finished) res.end();
     });
 
-    // Handle errors
+    // Error handling
     stream.on("error", (err) => {
       console.error("❌ yt-dlp stream error:", err);
       if (!res.headersSent) {
@@ -80,7 +85,7 @@ app.post("/download", (req, res) => {
       }
     });
 
-    // Client disconnect
+    // Handle client disconnect
     req.on("close", () => {
       console.log("⚠️ Client disconnected — stopping yt-dlp");
       try { stream.destroy(); } catch {}
