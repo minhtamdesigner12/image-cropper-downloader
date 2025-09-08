@@ -42,7 +42,6 @@
   },
   "description": "Next.js frontend + backend for Image Cropper Downloader",
   "main": "next.config.js",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/minhtamdesigner12/image-cropper-downloader.git"
