@@ -11,14 +11,13 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// Cross-platform ffmpeg path
+// ffmpeg binary path
 // ----------------------------
 const ffmpegPath = ffmpegInstaller.path;
-if (!fs.existsSync(ytdlpPath)) {
-  console.error("❌ yt-dlp binary not found:", ytdlpPath);
+if (!fs.existsSync(ffmpegPath)) {
+  console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
 }
-
 
 // ----------------------------
 // yt-dlp binary path
@@ -28,7 +27,6 @@ if (!fs.existsSync(ytdlpPath)) {
   console.error("❌ yt-dlp binary not found:", ytdlpPath);
   process.exit(1);
 }
-
 
 const ytdlp = new YtDlpWrap(ytdlpPath);
 
@@ -102,7 +100,7 @@ app.post("/api/download", async (req, res) => {
       fileName =
         meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) + ".mp4";
     }
-  } catch (metaErr) {
+  } catch {
     console.warn("⚠️ Failed to fetch metadata, fallback to default name.");
   }
 
