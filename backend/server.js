@@ -14,10 +14,11 @@ const PORT = process.env.PORT || 8080;
 // Cross-platform ffmpeg path
 // ----------------------------
 const ffmpegPath = ffmpegInstaller.path;
-if (!fs.existsSync(ffmpegPath)) {
-  console.error("❌ ffmpeg binary not found:", ffmpegPath);
+if (!fs.existsSync(ytdlpPath)) {
+  console.error("❌ yt-dlp binary not found:", ytdlpPath);
   process.exit(1);
 }
+
 
 // ----------------------------
 // yt-dlp binary path
