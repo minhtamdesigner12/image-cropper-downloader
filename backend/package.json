@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o backend/yt-dlp && chmod +x backend/yt-dlp"
+    "start": "node server.js",
+    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o yt-dlp && chmod +x yt-dlp"
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
