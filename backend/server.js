@@ -29,6 +29,7 @@ if (!fs.existsSync(ytdlpPath)) {
   process.exit(1);
 }
 
+
 const ytdlp = new YtDlpWrap(ytdlpPath);
 
 // ----------------------------
