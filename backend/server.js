@@ -92,7 +92,7 @@ app.post("/api/download", async (req, res) => {
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
   let fileName = `video_${Date.now()}.mp4`;
 
-  // Step 1: Get metadata
+  // Step 1: Try to get metadata (optional)
   try {
     const jsonOut = await ytdlp.execPromise([
       "--dump-json",
@@ -102,13 +102,15 @@ app.post("/api/download", async (req, res) => {
       url,
     ]);
     const meta = JSON.parse(jsonOut);
-    if (meta && meta.title) {
+    if (meta?.title) {
       fileName =
         meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) + ".mp4";
     }
   } catch (metaErr) {
-    console.warn("⚠️ Failed to fetch metadata:", metaErr?.message || metaErr);
+    // Don’t block download if metadata fails
+    console.warn("⚠️ Metadata fetch failed, continuing with default filename");
   }
+
 
   // Step 2: Download video
   const args = [
