@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // ffmpeg binary path (downloaded in postinstall)
 // ----------------------------
-const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
+const ffmpegPath = path.join(__dirname, "ffmpeg-bin/ffmpeg");
 if (!fs.existsSync(ffmpegPath)) {
   console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
