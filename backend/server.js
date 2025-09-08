@@ -5,22 +5,21 @@ const path = require("path");
 const fs = require("fs");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 const urlModule = require("url");
-const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// ffmpeg binary path (from @ffmpeg-installer/ffmpeg)
+// ffmpeg binary path (downloaded in postinstall)
 // ----------------------------
-const ffmpegPath = ffmpegInstaller.path;
+const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
 if (!fs.existsSync(ffmpegPath)) {
   console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
 }
 
 // ----------------------------
-// yt-dlp binary path (downloaded by postinstall in backend/)
+// yt-dlp binary path (downloaded in postinstall)
 // ----------------------------
 const ytdlpPath = path.join(__dirname, "yt-dlp");
 if (!fs.existsSync(ytdlpPath)) {
@@ -57,11 +56,16 @@ function getPlatformOptions(url) {
   let ua =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  if (hostname.includes("x.com") || hostname.includes("twitter.com")) referer = "https://x.com/";
-  else if (hostname.includes("facebook.com")) referer = "https://www.facebook.com/";
-  else if (hostname.includes("instagram.com")) referer = "https://www.instagram.com/";
-  else if (hostname.includes("tiktok.com")) referer = "https://www.tiktok.com/";
-  else if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) return null;
+  if (hostname.includes("x.com") || hostname.includes("twitter.com"))
+    referer = "https://x.com/";
+  else if (hostname.includes("facebook.com"))
+    referer = "https://www.facebook.com/";
+  else if (hostname.includes("instagram.com"))
+    referer = "https://www.instagram.com/";
+  else if (hostname.includes("tiktok.com"))
+    referer = "https://www.tiktok.com/";
+  else if (hostname.includes("youtube.com") || hostname.includes("youtu.be"))
+    return null;
 
   return { referer, ua };
 }
@@ -92,13 +96,15 @@ app.post("/api/download", async (req, res) => {
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
   let fileName = `video_${Date.now()}.mp4`;
 
-  // Step 1: Try to get metadata (optional)
+  // Step 1: Try to get metadata
   try {
     const jsonOut = await ytdlp.execPromise([
       "--dump-json",
       "--no-playlist",
-      "--user-agent", ua,
-      "--referer", referer,
+      "--user-agent",
+      ua,
+      "--referer",
+      referer,
       url,
     ]);
     const meta = JSON.parse(jsonOut);
@@ -107,22 +113,25 @@ app.post("/api/download", async (req, res) => {
         meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) + ".mp4";
     }
   } catch (metaErr) {
-    // Don’t block download if metadata fails
     console.warn("⚠️ Metadata fetch failed, continuing with default filename");
   }
 
-
   // Step 2: Download video
   const args = [
-    "-f", "mp4/best",
+    "-f",
+    "mp4/best",
     "--no-playlist",
-    "--ffmpeg-location", ffmpegPath,
+    "--ffmpeg-location",
+    ffmpegPath,
     "--no-check-certificate",
     "--rm-cache-dir",
-    "--user-agent", ua,
-    "--referer", referer,
+    "--user-agent",
+    ua,
+    "--referer",
+    referer,
     url,
-    "-o", tmpFilePath,
+    "-o",
+    tmpFilePath,
   ];
 
   try {
@@ -146,7 +155,7 @@ app.post("/api/download", async (req, res) => {
     const blocked =
       (err.stderr &&
         (err.stderr.includes("403") ||
-         err.stderr.includes("Sign in to confirm you’re not a bot"))) ||
+          err.stderr.includes("Sign in to confirm you’re not a bot"))) ||
       (err.message && err.message.includes("403"));
 
     if (!res.headersSent) {
@@ -157,12 +166,16 @@ app.post("/api/download", async (req, res) => {
       });
     }
 
-    try { fs.unlink(tmpFilePath, () => {}); } catch {}
+    try {
+      fs.unlink(tmpFilePath, () => {});
+    } catch {}
   }
 
   req.on("close", () => {
     console.log("⚡ Client disconnected — cleaning temp file");
-    try { fs.unlink(tmpFilePath, () => {}); } catch {}
+    try {
+      fs.unlink(tmpFilePath, () => {});
+    } catch {}
   });
 });
 
