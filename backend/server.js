@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // ffmpeg binary path (downloaded in postinstall)
 // ----------------------------
-const ffmpegPath = path.join(__dirname, "ffmpeg-bin/ffmpeg");
+const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
 if (!fs.existsSync(ffmpegPath)) {
   console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
@@ -80,10 +80,7 @@ app.post("/api/download", async (req, res) => {
   // 🔗 Normalize Facebook share links
   if (url.includes("facebook.com/share/r/")) {
     console.log("🔗 Normalizing Facebook share link:", url);
-    url = url.replace(
-      /facebook\.com\/share\/r\/([^/?]+).*/,
-      "facebook.com/watch/?v=$1"
-    );
+    url = url.replace("facebook.com/share/r/", "facebook.com/watch/?v=");
   }
 
   const platformOptions = getPlatformOptions(url);
@@ -179,6 +176,17 @@ app.post("/api/download", async (req, res) => {
     try {
       fs.unlink(tmpFilePath, () => {});
     } catch {}
+  });
+});
+
+// ----------------------------
+// Route to check yt-dlp version
+// ----------------------------
+app.get("/yt-dlp-version", (_, res) => {
+  const { exec } = require("child_process");
+  exec("./backend/yt-dlp --version", (err, stdout, stderr) => {
+    if (err) return res.status(500).send(stderr);
+    res.send(stdout);
   });
 });
 
