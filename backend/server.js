@@ -80,7 +80,10 @@ app.post("/api/download", async (req, res) => {
   // 🔗 Normalize Facebook share links
   if (url.includes("facebook.com/share/r/")) {
     console.log("🔗 Normalizing Facebook share link:", url);
-    url = url.replace("facebook.com/share/r/", "facebook.com/watch/?v=");
+    url = url.replace(
+      /facebook\.com\/share\/r\/([^/?]+).*/,
+      "facebook.com/watch/?v=$1"
+    );
   }
 
   const platformOptions = getPlatformOptions(url);
