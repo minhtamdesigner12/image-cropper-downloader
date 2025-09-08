@@ -7,10 +7,14 @@
     "build": "next build",
     "export": "next export",
     "start": "npx serve@latest out",
-    "lint": "next lint"
+    "lint": "next lint",
+    "backend": "node backend/server.js",
+    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o backend/yt-dlp && chmod +x backend/yt-dlp"
   },
   "dependencies": {
-    "express": "^5.1.0",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
     "heic2any": "^0.0.4",
     "next": "^15.5.2",
     "pdf-lib": "^1.17.1",
@@ -33,7 +37,10 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.2"
   },
-  "description": "Next.js frontend for Image Cropper Downloader",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "description": "Next.js frontend + backend for Image Cropper Downloader",
   "main": "next.config.js",
   "type": "commonjs",
   "repository": {
