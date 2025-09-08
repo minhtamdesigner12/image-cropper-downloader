@@ -11,7 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// ffmpeg binary path
+// ffmpeg binary path (from @ffmpeg-installer/ffmpeg)
 // ----------------------------
 const ffmpegPath = ffmpegInstaller.path;
 if (!fs.existsSync(ffmpegPath)) {
@@ -20,9 +20,9 @@ if (!fs.existsSync(ffmpegPath)) {
 }
 
 // ----------------------------
-// yt-dlp binary path
+// yt-dlp binary path (downloaded by postinstall in backend/)
 // ----------------------------
-const ytdlpPath = path.join(__dirname, "yt-dlp"); // downloaded in backend/
+const ytdlpPath = path.join(__dirname, "yt-dlp");
 if (!fs.existsSync(ytdlpPath)) {
   console.error("❌ yt-dlp binary not found:", ytdlpPath);
   process.exit(1);
@@ -70,8 +70,14 @@ function getPlatformOptions(url) {
 // Download route
 // ----------------------------
 app.post("/api/download", async (req, res) => {
-  const { url } = req.body;
+  let { url } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
+
+  // 🔗 Normalize Facebook share links
+  if (url.includes("facebook.com/share/r/")) {
+    console.log("🔗 Normalizing Facebook share link:", url);
+    url = url.replace("facebook.com/share/r/", "facebook.com/watch/?v=");
+  }
 
   const platformOptions = getPlatformOptions(url);
   if (!platformOptions) {
@@ -86,7 +92,7 @@ app.post("/api/download", async (req, res) => {
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
   let fileName = `video_${Date.now()}.mp4`;
 
-  // Step 1: Get metadata for nice file name
+  // Step 1: Get metadata
   try {
     const jsonOut = await ytdlp.execPromise([
       "--dump-json",
@@ -100,8 +106,8 @@ app.post("/api/download", async (req, res) => {
       fileName =
         meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) + ".mp4";
     }
-  } catch {
-    console.warn("⚠️ Failed to fetch metadata, fallback to default name.");
+  } catch (metaErr) {
+    console.warn("⚠️ Failed to fetch metadata:", metaErr?.message || metaErr);
   }
 
   // Step 2: Download video
@@ -131,12 +137,14 @@ app.post("/api/download", async (req, res) => {
       fs.unlink(tmpFilePath, () => {});
     });
   } catch (err) {
-    console.error("❌ Download failed:", err.stderr || err.message || err);
+    console.error("❌ FULL download failed:", err);
+    if (err?.stderr) console.error("STDERR:", err.stderr.toString());
+    if (err?.stdout) console.error("STDOUT:", err.stdout.toString());
 
     const blocked =
       (err.stderr &&
         (err.stderr.includes("403") ||
-          err.stderr.includes("Sign in to confirm you’re not a bot"))) ||
+         err.stderr.includes("Sign in to confirm you’re not a bot"))) ||
       (err.message && err.message.includes("403"));
 
     if (!res.headersSent) {
