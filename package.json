@@ -9,7 +9,7 @@
     "start": "npx serve@latest out",
     "lint": "next lint",
     "backend": "node backend/server.js",
-    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o backend/yt-dlp && chmod +x backend/yt-dlp && curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ffmpeg.tar.xz && mkdir -p backend/ffmpeg-bin && tar -xJf /tmp/ffmpeg.tar.xz -C backend/ffmpeg-bin --strip-components=1 && chmod +x backend/ffmpeg-bin/ffmpeg"
+    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o backend/yt-dlp && chmod +x backend/yt-dlp && ./backend/yt-dlp -U && curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ffmpeg.tar.xz && mkdir -p backend/ffmpeg-bin && tar -xJf /tmp/ffmpeg.tar.xz -C backend/ffmpeg-bin --strip-components=1 && chmod +x backend/ffmpeg-bin/ffmpeg"
   },
   "dependencies": {
     "cors": "^2.8.5",
