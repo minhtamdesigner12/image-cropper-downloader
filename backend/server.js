@@ -3,29 +3,44 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 const urlModule = require("url");
+const { exec } = require("child_process");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// ffmpeg binary path (downloaded in postinstall)
+// ffmpeg binary path
 // ----------------------------
-const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
-if (!fs.existsSync(ffmpegPath)) {
+let ffmpegPath = path.join(__dirname, "ffmpeg-bin");
+if (os.platform() === "darwin") {
+  // On macOS, use system ffmpeg (brew install ffmpeg)
+  ffmpegPath = "ffmpeg";
+} else if (!fs.existsSync(ffmpegPath)) {
   console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
 }
 
 // ----------------------------
-// yt-dlp binary path (downloaded in postinstall)
+// yt-dlp binary path
 // ----------------------------
-const ytdlpPath = path.join(__dirname, "yt-dlp");
-if (!fs.existsSync(ytdlpPath)) {
-  console.error("❌ yt-dlp binary not found:", ytdlpPath);
-  process.exit(1);
+let ytdlpPath;
+if (os.platform() === "darwin") {
+  // On macOS, use Homebrew-installed yt-dlp
+  ytdlpPath = "yt-dlp";
+} else {
+  // On Railway/Linux, use bundled binary
+  ytdlpPath = path.join(__dirname, "yt-dlp");
+  if (!fs.existsSync(ytdlpPath)) {
+    console.error("❌ yt-dlp binary not found:", ytdlpPath);
+    process.exit(1);
+  }
 }
+
+console.log("🎯 Using yt-dlp binary:", ytdlpPath);
+console.log("🎯 Using ffmpeg binary:", ffmpegPath);
 
 const ytdlp = new YtDlpWrap(ytdlpPath);
 
@@ -85,7 +100,6 @@ app.post("/api/download", async (req, res) => {
       url = `https://www.facebook.com/watch?v=${shareMatch[1]}`;
     }
   }
-
 
   const platformOptions = getPlatformOptions(url);
   if (!platformOptions) {
@@ -187,12 +201,24 @@ app.post("/api/download", async (req, res) => {
 // Route to check yt-dlp version
 // ----------------------------
 app.get("/yt-dlp-version", (_, res) => {
-  const { exec } = require("child_process");
-  exec("./backend/yt-dlp --version", (err, stdout, stderr) => {
+  exec(`${ytdlpPath} --version`, (err, stdout, stderr) => {
     if (err) return res.status(500).send(stderr);
     res.send(stdout);
   });
 });
+
+
+// ----------------------------
+// Route to check ffmpeg version
+// ----------------------------
+app.get("/ffmpeg-version", (_, res) => {
+  exec(`${ffmpegPath} -version`, (err, stdout, stderr) => {
+    if (err) return res.status(500).send(stderr);
+    res.send(stdout);
+  });
+});
+
+
 
 // ----------------------------
 // Start server
