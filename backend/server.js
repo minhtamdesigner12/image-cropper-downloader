@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// ffmpeg binary path (downloaded in postinstall)
+// ffmpeg binary path
 // ----------------------------
 const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
 if (!fs.existsSync(ffmpegPath)) {
@@ -19,7 +19,7 @@ if (!fs.existsSync(ffmpegPath)) {
 }
 
 // ----------------------------
-// yt-dlp binary path (downloaded in postinstall)
+// yt-dlp binary path
 // ----------------------------
 const ytdlpPath = path.join(__dirname, "yt-dlp");
 if (!fs.existsSync(ytdlpPath)) {
@@ -48,7 +48,7 @@ app.options("*", cors());
 app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 
 // ----------------------------
-// Helper: detect platform & set headers
+// Helper: detect platform
 // ----------------------------
 function getPlatformOptions(url) {
   const hostname = urlModule.parse(url).hostname || "";
@@ -71,30 +71,13 @@ function getPlatformOptions(url) {
 }
 
 // ----------------------------
-// Simple URL validator
-// ----------------------------
-function isValidHttpUrl(str) {
-  try {
-    const url = new URL(str);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch (_) {
-    return false;
-  }
-}
-
-// ----------------------------
 // Download route
 // ----------------------------
 app.post("/api/download", async (req, res) => {
   let { url } = req.body;
+  if (!url) return res.status(400).json({ error: "No URL provided" });
 
   console.log("📥 Raw request body:", req.body);
-  console.log("📥 Extracted URL:", url);
-
-  if (!url || typeof url !== "string" || !isValidHttpUrl(url)) {
-    console.error("❌ Invalid or missing URL in request:", url);
-    return res.status(400).json({ error: "Invalid URL provided" });
-  }
 
   // 🔗 Normalize Facebook share links
   if (url.includes("facebook.com/share/r/")) {
@@ -102,9 +85,10 @@ app.post("/api/download", async (req, res) => {
     const shareMatch = url.match(/facebook\.com\/share\/r\/([^/?]+)/);
     if (shareMatch) {
       url = `https://www.facebook.com/watch?v=${shareMatch[1]}`;
-      console.log("🔗 Normalized to:", url);
     }
   }
+
+  console.log("📥 Extracted URL:", url);
 
   const platformOptions = getPlatformOptions(url);
   if (!platformOptions) {
@@ -119,9 +103,9 @@ app.post("/api/download", async (req, res) => {
   const tmpFilePath = path.join("/tmp", `tmp_${Date.now()}.mp4`);
   let fileName = `video_${Date.now()}.mp4`;
 
-  // Step 1: Try to get metadata
+  // Step 1: Metadata
+  console.log("⚡ Fetching metadata with yt-dlp...");
   try {
-    console.log("⚡ Fetching metadata with yt-dlp...");
     const jsonOut = await ytdlp.execPromise([
       "--dump-json",
       "--no-playlist",
@@ -135,16 +119,18 @@ app.post("/api/download", async (req, res) => {
     if (meta?.title) {
       fileName =
         meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) + ".mp4";
+      console.log("✅ Metadata fetch success, filename:", fileName);
     }
-    console.log("✅ Metadata fetch success, filename:", fileName);
   } catch (metaErr) {
-    console.warn("⚠️ Metadata fetch failed, continuing with default filename");
+    console.warn("⚠️ Metadata fetch failed, using default filename");
   }
 
-  // Step 2: Download video
+  // Step 2: Download
   const args = [
     "-f",
-    "mp4/best",
+    "bestvideo+bestaudio/best",
+    "--merge-output-format",
+    "mp4",
     "--no-playlist",
     "--ffmpeg-location",
     ffmpegPath,
@@ -159,19 +145,18 @@ app.post("/api/download", async (req, res) => {
     tmpFilePath,
   ];
 
-  console.log("📥 yt-dlp args:", args);
+  console.log("📥 yt-dlp args:", JSON.stringify(args, null, 2));
 
   try {
     await ytdlp.exec(args);
+    console.log("✅ yt-dlp finished, checking file:", tmpFilePath);
 
     if (!fs.existsSync(tmpFilePath)) {
       console.error("❌ File not created:", tmpFilePath);
       return res.status(500).json({
-        error: "Video file was not created. Possibly blocked by the platform.",
+        error: "Video file was not created. Possibly format mismatch.",
       });
     }
-
-    console.log("✅ Download complete, sending file:", fileName);
 
     res.download(tmpFilePath, fileName, (err) => {
       if (err) console.error("❌ Error sending file:", err);
@@ -182,17 +167,11 @@ app.post("/api/download", async (req, res) => {
     if (err?.stderr) console.error("STDERR:", err.stderr.toString());
     if (err?.stdout) console.error("STDOUT:", err.stdout.toString());
 
-    const blocked =
-      (err.stderr &&
-        (err.stderr.includes("403") ||
-          err.stderr.includes("Sign in to confirm you’re not a bot"))) ||
-      (err.message && err.message.includes("403"));
-
     if (!res.headersSent) {
-      res.status(blocked ? 403 : 500).json({
-        error: blocked
-          ? "Download blocked by platform. Try a public video."
-          : "yt-dlp failed: " + (err.stderr || err.message || "Unknown error"),
+      res.status(500).json({
+        error:
+          "yt-dlp failed: " +
+          (err.stderr || err.message || "Unknown error during download"),
       });
     }
 
@@ -210,36 +189,21 @@ app.post("/api/download", async (req, res) => {
 });
 
 // ----------------------------
-// Route to check yt-dlp version
+// yt-dlp version check
 // ----------------------------
 app.get("/yt-dlp-version", (_, res) => {
   const { exec } = require("child_process");
-  exec("./backend/yt-dlp --version", (err, stdout, stderr) => {
+  exec(path.join(__dirname, "yt-dlp") + " --version", (err, stdout, stderr) => {
     if (err) return res.status(500).send(stderr);
     res.send(stdout);
   });
 });
 
 // ----------------------------
-// Route to check ffmpeg version
-// ----------------------------
-app.get("/ffmpeg-version", (_, res) => {
-  const { exec } = require("child_process");
-  exec("backend/ffmpeg-bin/ffmpeg -version", (err, stdout, stderr) => {
-    if (err) {
-      console.error("❌ ffmpeg version check failed:", err, stderr);
-      return res.status(500).send(stderr || err.message);
-    }
-    res.send(stdout.split("\n")[0]); // just first line
-  });
-});
-
-
-// ----------------------------
 // Start server
 // ----------------------------
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
-  console.log(`🎯 Using yt-dlp binary: ${ytdlpPath}`);
-  console.log(`🎯 Using ffmpeg binary: ${ffmpegPath}`);
+  console.log("🎯 Using yt-dlp binary:", ytdlpPath);
+  console.log("🎯 Using ffmpeg binary:", ffmpegPath);
 });
