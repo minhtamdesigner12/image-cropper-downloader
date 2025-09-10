@@ -1,169 +1,228 @@
 // backend/server.js
 const express = require("express");
-const { spawn } = require("child_process");
+const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const YtDlpWrap = require("yt-dlp-wrap").default;
+const urlModule = require("url");
 
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 8080;
 
-const ytDlpPath = path.join(__dirname, "yt-dlp"); // binary downloaded in postinstall
+// ----------------------------
+// ffmpeg binary path
+// ----------------------------
 const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
-
-// helper: run yt-dlp with args
-function runYtDlp(args) {
-  return new Promise((resolve, reject) => {
-    console.log("📥 Running yt-dlp with args:", args.join(" "));
-
-    const proc = spawn(ytDlpPath, args);
-
-    let stdout = "";
-    let stderr = "";
-
-    proc.stdout.on("data", (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on("close", (code) => {
-      console.log("✅ yt-dlp exit code:", code);
-      if (stdout.trim()) console.log("📤 yt-dlp stdout:\n", stdout);
-      if (stderr.trim()) console.log("⚠️ yt-dlp stderr:\n", stderr);
-
-      if (code === 0) {
-        resolve({ stdout, stderr });
-      } else {
-        reject(new Error(`yt-dlp failed with code ${code}: ${stderr}`));
-      }
-    });
-  });
+if (!fs.existsSync(ffmpegPath)) {
+  console.error("❌ ffmpeg binary not found:", ffmpegPath);
+  process.exit(1);
 }
 
-// helper: list /tmp files
-function listTmp() {
-  try {
-    const files = fs.readdirSync("/tmp");
-    console.log("📂 /tmp content:", files);
-    return files;
-  } catch (err) {
-    console.error("⚠️ Could not read /tmp:", err.message);
-    return [];
-  }
+// ----------------------------
+// yt-dlp binary path
+// ----------------------------
+const ytdlpPath = path.join(__dirname, "yt-dlp");
+if (!fs.existsSync(ytdlpPath)) {
+  console.error("❌ yt-dlp binary not found:", ytdlpPath);
+  process.exit(1);
 }
 
-// download video with fallback args
-async function downloadVideo(url, ua, referer, tmpFileTemplate) {
-  const argsList = [
-    [
-      "-f",
-      "bestvideo+bestaudio/best",
-      "--merge-output-format",
-      "mp4",
-      "--no-playlist",
-      "--ffmpeg-location",
-      path.join(ffmpegPath, "ffmpeg"),
-      "--no-check-certificate",
-      "--rm-cache-dir",
-      "--user-agent",
-      ua,
-      "--referer",
-      referer,
-      url,
-      "-o",
-      tmpFileTemplate,
-    ],
-    [
-      "-f",
-      "mp4",
-      "--no-playlist",
-      "--ffmpeg-location",
-      path.join(ffmpegPath, "ffmpeg"),
-      "--no-check-certificate",
-      "--rm-cache-dir",
-      "--user-agent",
-      ua,
-      "--referer",
-      referer,
-      url,
-      "-o",
-      tmpFileTemplate,
-    ],
-  ];
+const ytdlp = new YtDlpWrap(ytdlpPath);
 
-  for (const args of argsList) {
-    try {
-      console.log("🔍 Before yt-dlp run:");
-      listTmp();
+// ----------------------------
+// Middleware (CORS + JSON)
+// ----------------------------
+app.use(
+  cors({
+    origin: ["https://freetlo.com", "http://localhost:3000"],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.use(express.json({ limit: "50mb" }));
+app.options("*", cors());
 
-      await runYtDlp(args);
+// ----------------------------
+// Health check
+// ----------------------------
+app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 
-      console.log("🔍 After yt-dlp run:");
-      const files = listTmp();
+// ----------------------------
+// Helper: detect platform
+// ----------------------------
+function getPlatformOptions(url) {
+  const hostname = urlModule.parse(url).hostname || "";
+  let referer = "";
+  let ua =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-      // check if file exists
-      const base = tmpFileTemplate.replace("%(ext)s", "mp4");
-      if (fs.existsSync(base)) {
-        console.log("✅ File created:", base);
-        return base;
-      } else {
-        console.warn("⚠️ Expected file not found:", base);
-      }
+  if (hostname.includes("x.com") || hostname.includes("twitter.com"))
+    referer = "https://x.com/";
+  else if (hostname.includes("facebook.com"))
+    referer = "https://www.facebook.com/";
+  else if (hostname.includes("instagram.com"))
+    referer = "https://www.instagram.com/";
+  else if (hostname.includes("tiktok.com"))
+    referer = "https://www.tiktok.com/";
+  else if (hostname.includes("youtube.com") || hostname.includes("youtu.be"))
+    return null;
 
-      // maybe another extension (mkv, webm…)
-      const found = files.find((f) => f.startsWith(path.basename(tmpFileTemplate, ".%(ext)s")));
-      if (found) {
-        console.log("✅ Found alternative file:", found);
-        return path.join("/tmp", found);
-      }
-    } catch (err) {
-      console.error("❌ yt-dlp attempt failed:", err.message);
+  return { referer, ua };
+}
+
+// ----------------------------
+// Download route
+// ----------------------------
+app.post("/api/download", async (req, res) => {
+  let { url } = req.body;
+  if (!url) return res.status(400).json({ error: "No URL provided" });
+
+  console.log("📥 Raw request body:", req.body);
+
+  // 🔗 Normalize Facebook share links
+  if (url.includes("facebook.com/share/r/")) {
+    console.log("🔗 Normalizing Facebook share link:", url);
+    const shareMatch = url.match(/facebook\.com\/share\/r\/([^/?]+)/);
+    if (shareMatch) {
+      url = `https://www.facebook.com/watch?v=${shareMatch[1]}`;
     }
   }
-  return null; // failed
-}
 
-// API endpoint
-app.post("/api/download", async (req, res) => {
-  const { url } = req.body;
-  console.log("📥 Raw request body:", req.body);
-  if (!url) return res.status(400).json({ error: "Missing URL" });
+  console.log("📥 Extracted URL:", url);
 
-  const ua =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-  const referer = "https://www.facebook.com/";
-  const tmpFileTemplate = `/tmp/tmp_${Date.now()}.%(ext)s`;
+  const platformOptions = getPlatformOptions(url);
+  if (!platformOptions) {
+    return res
+      .status(403)
+      .json({ error: "YouTube downloads are skipped to avoid bot detection" });
+  }
 
+  const { referer, ua } = platformOptions;
   console.log("🎬 Starting download for:", url);
 
-  try {
-    const finalPath = await downloadVideo(url, ua, referer, tmpFileTemplate);
+  const tmpFileTemplate = path.join("/tmp", `tmp_${Date.now()}.%(ext)s`);
+  let fileName = `video_${Date.now()}.mp4`;
 
-    if (!finalPath) {
+  // Step 1: Metadata
+  console.log("⚡ Fetching metadata with yt-dlp...");
+  try {
+    const jsonOut = await ytdlp.execPromise([
+      "--dump-json",
+      "--no-playlist",
+      "--user-agent",
+      ua,
+      "--referer",
+      referer,
+      url,
+    ]);
+    const meta = JSON.parse(jsonOut);
+    if (meta?.title) {
+      fileName =
+        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) + ".mp4";
+      console.log("✅ Metadata fetch success, filename:", fileName);
+    }
+  } catch (metaErr) {
+    console.warn("⚠️ Metadata fetch failed, using default filename");
+  }
+
+  // Step 2: Download
+  async function downloadVideo(url, ua, referer, tmpFileTemplate) {
+    const argsList = [
+      [
+        "-f",
+        "bestvideo+bestaudio/best",
+        "--merge-output-format",
+        "mp4",
+        "--no-playlist",
+        "--ffmpeg-location",
+        path.join(ffmpegPath, "ffmpeg"),
+        "--no-check-certificate",
+        "--rm-cache-dir",
+        "--user-agent",
+        ua,
+        "--referer",
+        referer,
+        url,
+        "-o",
+        tmpFileTemplate,
+      ],
+      [
+        "-f",
+        "mp4",
+        "--no-playlist",
+        "--ffmpeg-location",
+        path.join(ffmpegPath, "ffmpeg"),
+        "--no-check-certificate",
+        "--rm-cache-dir",
+        "--user-agent",
+        ua,
+        "--referer",
+        referer,
+        url,
+        "-o",
+        tmpFileTemplate,
+      ],
+    ];
+
+    for (const args of argsList) {
+      console.log("📥 Trying yt-dlp args:", args.join(" "));
+      try {
+        await ytdlp.exec(args);
+        console.log("✅ yt-dlp finished with current args");
+        const tmpDir = "/tmp";
+        const files = fs.readdirSync(tmpDir).filter(f =>
+          f.startsWith(path.basename(tmpFileTemplate).split(".")[0])
+        );
+        if (files.length > 0) {
+          const finalFile = path.join(tmpDir, files[0]);
+          console.log("✅ Found output file:", finalFile);
+          return finalFile;
+        }
+      } catch (err) {
+        console.warn("⚠️ yt-dlp failed with args:", args.join(" "));
+        console.warn(err.stderr?.toString() || err.message);
+      }
+    }
+    return null;
+  }
+
+  try {
+    const finalFile = await downloadVideo(url, ua, referer, tmpFileTemplate);
+    if (!finalFile) {
+      console.error("❌ No final file created");
       return res.status(500).json({ error: "Video file not created" });
     }
 
-    res.download(finalPath, (err) => {
-      if (err) {
-        console.error("❌ Error sending file:", err.message);
-      }
-      // cleanup
-      try {
-        fs.unlinkSync(finalPath);
-      } catch {}
+    res.download(finalFile, fileName, (err) => {
+      if (err) console.error("❌ Error sending file:", err);
+      fs.unlink(finalFile, () => {});
     });
   } catch (err) {
-    console.error("❌ Download error:", err.message);
-    res.status(500).json({ error: "Download failed: " + err.message });
+    console.error("❌ FULL download failed:", err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "yt-dlp failed: " + (err.message || "Unknown error"),
+      });
+    }
   }
 });
 
-// start server
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
+// ----------------------------
+// yt-dlp version check
+// ----------------------------
+app.get("/yt-dlp-version", (_, res) => {
+  const { exec } = require("child_process");
+  exec(path.join(__dirname, "yt-dlp") + " --version", (err, stdout, stderr) => {
+    if (err) return res.status(500).send(stderr);
+    res.send(stdout);
+  });
+});
+
+// ----------------------------
+// Start server
+// ----------------------------
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
-  console.log(`🎯 Using yt-dlp binary: ${ytDlpPath}`);
-  console.log(`🎯 Using ffmpeg binary: ${ffmpegPath}`);
+  console.log("🎯 Using yt-dlp binary:", ytdlpPath);
+  console.log("🎯 Using ffmpeg binary:", ffmpegPath);
 });
