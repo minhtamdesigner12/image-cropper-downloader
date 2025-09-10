@@ -88,7 +88,6 @@ app.post("/api/download", async (req, res) => {
     }
   }
 
-
   console.log("📥 Extracted URL:", url);
 
   const platformOptions = getPlatformOptions(url);
@@ -102,7 +101,7 @@ app.post("/api/download", async (req, res) => {
   console.log("🎬 Starting download for:", url);
 
   const tmpFileTemplate = path.join("/tmp", `tmp_${Date.now()}.%(ext)s`);
-  let fileName = `video_${Date.now()}.mp4`;
+  let fileName = `freetlo.com-video_${Date.now()}.mp4`;
 
   // Step 1: Metadata
   console.log("⚡ Fetching metadata with yt-dlp...");
@@ -119,7 +118,9 @@ app.post("/api/download", async (req, res) => {
     const meta = JSON.parse(jsonOut);
     if (meta?.title) {
       fileName =
-        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) + ".mp4";
+        "freetlo.com-" +
+        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) +
+        ".mp4";
       console.log("✅ Metadata fetch success, filename:", fileName);
     }
   } catch (metaErr) {
@@ -128,73 +129,73 @@ app.post("/api/download", async (req, res) => {
 
   // Step 2: Download
   async function downloadVideo(url, ua, referer, tmpFileTemplate) {
-  const argsList = [
-    [
-      "-f",
-      "bv*[vcodec^=avc1]+ba*[acodec^=mp4a]/mp4",  // force H.264 + AAC if available
-      "--merge-output-format",
-      "mp4",
-      "--recode-video",
-      "mp4", // ensures re-encode if codecs mismatch
-      "--no-playlist",
-      "--ffmpeg-location",
-      path.join(ffmpegPath, "ffmpeg"),
-      "--no-check-certificate",
-      "--rm-cache-dir",
-      "--user-agent",
-      ua,
-      "--referer",
-      referer,
-      url,
-      "-o",
-      tmpFileTemplate,
-    ],
-    [
-      "-f",
-      "mp4",
-      "--recode-video",
-      "mp4",
-      "--no-playlist",
-      "--ffmpeg-location",
-      path.join(ffmpegPath, "ffmpeg"),
-      "--no-check-certificate",
-      "--rm-cache-dir",
-      "--user-agent",
-      ua,
-      "--referer",
-      referer,
-      url,
-      "-o",
-      tmpFileTemplate,
-    ],
-  ];
+    const argsList = [
+      [
+        "-f",
+        "bv*[vcodec^=avc1]+ba*[acodec^=mp4a]/b[ext=mp4]/best",
+        "--merge-output-format",
+        "mp4",
+        "--recode-video",
+        "mp4", // force compatibility
+        "--no-playlist",
+        "--ffmpeg-location",
+        path.join(ffmpegPath, "ffmpeg"),
+        "--no-check-certificate",
+        "--rm-cache-dir",
+        "--user-agent",
+        ua,
+        "--referer",
+        referer,
+        url,
+        "-o",
+        tmpFileTemplate,
+      ],
+      [
+        "-f",
+        "mp4",
+        "--recode-video",
+        "mp4",
+        "--no-playlist",
+        "--ffmpeg-location",
+        path.join(ffmpegPath, "ffmpeg"),
+        "--no-check-certificate",
+        "--rm-cache-dir",
+        "--user-agent",
+        ua,
+        "--referer",
+        referer,
+        url,
+        "-o",
+        tmpFileTemplate,
+      ],
+    ];
 
-  for (const args of argsList) {
-    try {
-      console.log("📥 Trying yt-dlp args:", args.join(" "));
+    for (const args of argsList) {
+      try {
+        console.log("📥 Trying yt-dlp args:", args.join(" "));
 
-      const { stdout, stderr } = await ytdlp.execPromise(args);
+        const { stdout, stderr } = await ytdlp.execPromise(args);
 
-      if (stdout) console.log("▶ yt-dlp stdout:", stdout.toString());
-      if (stderr) console.log("⚠️ yt-dlp stderr:", stderr.toString());
+        if (stdout) console.log("▶ yt-dlp stdout:", stdout.toString());
+        if (stderr) console.log("⚠️ yt-dlp stderr:", stderr.toString());
 
-      // Check if file created
-      const files = fs.readdirSync("/tmp");
-      console.log("📂 /tmp content after run:", files);
+        // Check if file created
+        const files = fs.readdirSync("/tmp");
+        console.log("📂 /tmp content after run:", files);
 
-      const outputFile = files.find(f => f.startsWith(path.basename(tmpFileTemplate).split(".")[0]));
-      if (outputFile) {
-        console.log("✅ Found output file:", outputFile);
-        return path.join("/tmp", outputFile);
+        const base = path.basename(tmpFileTemplate).split(".")[0];
+        const outputFile = files.find((f) => f.startsWith(base));
+        if (outputFile) {
+          console.log("✅ Found output file:", outputFile);
+          return path.join("/tmp", outputFile);
+        }
+      } catch (err) {
+        console.error("❌ yt-dlp exec failed:", err);
       }
-    } catch (err) {
-      console.error("❌ yt-dlp exec failed:", err);
     }
+
+    throw new Error("Video file not created");
   }
-
-  throw new Error("Video file not created");
-}
-
 
   try {
     const finalFile = await downloadVideo(url, ua, referer, tmpFileTemplate);
