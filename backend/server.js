@@ -94,9 +94,9 @@ async function downloadVideo(url, ua, referer, tmpFileTemplate) {
       tmpFileTemplate,
     ],
     [
-      // fallback: simpler mp4-only format
+      // fallback: simpler best available format with mp4 preference
       "-f",
-      "mp4",
+      "mp4/best",
       "--no-playlist",
       "--ffmpeg-location",
       path.join(ffmpegPath, "ffmpeg"),
