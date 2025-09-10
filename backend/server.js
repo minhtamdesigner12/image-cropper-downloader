@@ -112,7 +112,6 @@ app.post("/api/download", async (req, res) => {
 
   // default filename with random ID
   let baseFileName = `freetlo.com-video`;
-  let fileName = `${baseFileName}-${shortId()}.mp4`;
 
   // Step 1: Metadata
   console.log("⚡ Fetching metadata with yt-dlp...");
@@ -127,16 +126,20 @@ app.post("/api/download", async (req, res) => {
       url,
     ]);
     const meta = JSON.parse(jsonOut);
+
     if (meta?.title) {
-      baseFileName =
-        "freetlo.com-" +
-        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80);
-      fileName = `${baseFileName}-${shortId()}.mp4`;
-      console.log("✅ Metadata fetch success, filename:", fileName);
+      const safeTitle = meta.title
+        .replace(/[^a-z0-9_\-]+/gi, "_")
+        .substring(0, 80);
+      baseFileName = `freetlo.com-${safeTitle}`;
     }
   } catch (metaErr) {
-    console.warn("⚠️ Metadata fetch failed, using default filename:", fileName);
+    console.warn("⚠️ Metadata fetch failed, using default filename:", baseFileName);
   }
+
+  // ✅ Final filename: always add random suffix
+  const fileName = `${baseFileName}-${shortId()}.mp4`;
+  console.log("🎯 Final filename chosen:", fileName);
 
   // Step 2: Download
   async function downloadVideo(url, ua, referer, tmpFileTemplate) {
@@ -147,7 +150,7 @@ app.post("/api/download", async (req, res) => {
         "--merge-output-format",
         "mp4",
         "--recode-video",
-        "mp4", // force compatibility
+        "mp4",
         "--no-playlist",
         "--ffmpeg-location",
         path.join(ffmpegPath, "ffmpeg"),
@@ -215,20 +218,19 @@ app.post("/api/download", async (req, res) => {
       return res.status(500).json({ error: "Video file not created" });
     }
 
-    // ✅ Always send with prefixed + random filename
+    // ✅ Send with unique filename
     res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${encodeURIComponent(fileName)}"`
-      );
-      res.setHeader("Content-Type", "video/mp4");
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(fileName)}"`
+    );
+    res.setHeader("Content-Type", "video/mp4");
 
-      const filestream = fs.createReadStream(finalFile);
-      filestream.pipe(res);
+    const filestream = fs.createReadStream(finalFile);
+    filestream.pipe(res);
 
-      filestream.on("end", () => {
-        fs.unlink(finalFile, () => {});
-      });
-
+    filestream.on("end", () => {
+      fs.unlink(finalFile, () => {});
+    });
   } catch (err) {
     console.error("❌ FULL download failed:", err);
     if (!res.headersSent) {
