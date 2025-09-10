@@ -5,6 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 const urlModule = require("url");
+const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -71,6 +72,13 @@ function getPlatformOptions(url) {
 }
 
 // ----------------------------
+// Helper: short random ID
+// ----------------------------
+function shortId(len = 6) {
+  return crypto.randomBytes(len).toString("base64url").substring(0, len);
+}
+
+// ----------------------------
 // Download route
 // ----------------------------
 app.post("/api/download", async (req, res) => {
@@ -88,15 +96,6 @@ app.post("/api/download", async (req, res) => {
     }
   }
 
-  // 🔗 Normalize Facebook reels
-  if (url.includes("facebook.com/reel/")) {
-    console.log("🔗 Normalizing Facebook reel link:", url);
-    const reelMatch = url.match(/facebook\.com\/reel\/(\d+)/);
-    if (reelMatch) {
-      url = `https://www.facebook.com/watch?v=${reelMatch[1]}`;
-    }
-  }
-
   console.log("📥 Extracted URL:", url);
 
   const platformOptions = getPlatformOptions(url);
@@ -110,7 +109,10 @@ app.post("/api/download", async (req, res) => {
   console.log("🎬 Starting download for:", url);
 
   const tmpFileTemplate = path.join("/tmp", `tmp_${Date.now()}.%(ext)s`);
-  let fileName = `freetlo.com-video_${Date.now()}.mp4`;
+
+  // default filename with random ID
+  let baseFileName = `freetlo.com-video`;
+  let fileName = `${baseFileName}-${shortId()}.mp4`;
 
   // Step 1: Metadata
   console.log("⚡ Fetching metadata with yt-dlp...");
@@ -126,14 +128,14 @@ app.post("/api/download", async (req, res) => {
     ]);
     const meta = JSON.parse(jsonOut);
     if (meta?.title) {
-      fileName =
+      baseFileName =
         "freetlo.com-" +
-        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80) +
-        ".mp4";
+        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80);
+      fileName = `${baseFileName}-${shortId()}.mp4`;
       console.log("✅ Metadata fetch success, filename:", fileName);
     }
   } catch (metaErr) {
-    console.warn("⚠️ Metadata fetch failed, using default filename");
+    console.warn("⚠️ Metadata fetch failed, using default filename:", fileName);
   }
 
   // Step 2: Download
@@ -145,7 +147,7 @@ app.post("/api/download", async (req, res) => {
         "--merge-output-format",
         "mp4",
         "--recode-video",
-        "mp4",
+        "mp4", // force compatibility
         "--no-playlist",
         "--ffmpeg-location",
         path.join(ffmpegPath, "ffmpeg"),
@@ -161,8 +163,6 @@ app.post("/api/download", async (req, res) => {
       ],
       [
         "-f",
-        "b[ext=mp4]",
-        "--merge-output-format",
         "mp4",
         "--recode-video",
         "mp4",
@@ -215,6 +215,7 @@ app.post("/api/download", async (req, res) => {
       return res.status(500).json({ error: "Video file not created" });
     }
 
+    // ✅ Always send with prefixed + random filename
     res.download(finalFile, fileName, (err) => {
       if (err) console.error("❌ Error sending file:", err);
       fs.unlink(finalFile, () => {});
