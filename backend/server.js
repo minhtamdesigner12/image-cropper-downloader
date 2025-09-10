@@ -134,6 +134,7 @@ app.post("/api/download", async (req, res) => {
       "bestvideo+bestaudio/best",
       "--merge-output-format",
       "mp4",
+      "--recode-video", "mp4",   // 👈 Force re-encode to iOS-friendly MP4
       "--no-playlist",
       "--ffmpeg-location",
       path.join(ffmpegPath, "ffmpeg"),
@@ -150,6 +151,7 @@ app.post("/api/download", async (req, res) => {
     [
       "-f",
       "mp4",
+      "--recode-video", "mp4",   // 👈 also here
       "--no-playlist",
       "--ffmpeg-location",
       path.join(ffmpegPath, "ffmpeg"),
