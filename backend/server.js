@@ -127,64 +127,69 @@ app.post("/api/download", async (req, res) => {
 
   // Step 2: Download
   async function downloadVideo(url, ua, referer, tmpFileTemplate) {
-    const argsList = [
-      [
-        "-f",
-        "bestvideo+bestaudio/best",
-        "--merge-output-format",
-        "mp4",
-        "--no-playlist",
-        "--ffmpeg-location",
-        path.join(ffmpegPath, "ffmpeg"),
-        "--no-check-certificate",
-        "--rm-cache-dir",
-        "--user-agent",
-        ua,
-        "--referer",
-        referer,
-        url,
-        "-o",
-        tmpFileTemplate,
-      ],
-      [
-        "-f",
-        "mp4",
-        "--no-playlist",
-        "--ffmpeg-location",
-        path.join(ffmpegPath, "ffmpeg"),
-        "--no-check-certificate",
-        "--rm-cache-dir",
-        "--user-agent",
-        ua,
-        "--referer",
-        referer,
-        url,
-        "-o",
-        tmpFileTemplate,
-      ],
-    ];
+  const argsList = [
+    [
+      "-f",
+      "bestvideo+bestaudio/best",
+      "--merge-output-format",
+      "mp4",
+      "--no-playlist",
+      "--ffmpeg-location",
+      path.join(ffmpegPath, "ffmpeg"),
+      "--no-check-certificate",
+      "--rm-cache-dir",
+      "--user-agent",
+      ua,
+      "--referer",
+      referer,
+      url,
+      "-o",
+      tmpFileTemplate,
+    ],
+    [
+      "-f",
+      "mp4",
+      "--no-playlist",
+      "--ffmpeg-location",
+      path.join(ffmpegPath, "ffmpeg"),
+      "--no-check-certificate",
+      "--rm-cache-dir",
+      "--user-agent",
+      ua,
+      "--referer",
+      referer,
+      url,
+      "-o",
+      tmpFileTemplate,
+    ],
+  ];
 
-    for (const args of argsList) {
+  for (const args of argsList) {
+    try {
       console.log("📥 Trying yt-dlp args:", args.join(" "));
-      try {
-        await ytdlp.exec(args);
-        console.log("✅ yt-dlp finished with current args");
-        const tmpDir = "/tmp";
-        const files = fs.readdirSync(tmpDir).filter(f =>
-          f.startsWith(path.basename(tmpFileTemplate).split(".")[0])
-        );
-        if (files.length > 0) {
-          const finalFile = path.join(tmpDir, files[0]);
-          console.log("✅ Found output file:", finalFile);
-          return finalFile;
-        }
-      } catch (err) {
-        console.warn("⚠️ yt-dlp failed with args:", args.join(" "));
-        console.warn(err.stderr?.toString() || err.message);
+
+      const { stdout, stderr } = await ytdlp.execPromise(args);
+
+      if (stdout) console.log("▶ yt-dlp stdout:", stdout.toString());
+      if (stderr) console.log("⚠️ yt-dlp stderr:", stderr.toString());
+
+      // Check if file created
+      const files = fs.readdirSync("/tmp");
+      console.log("📂 /tmp content after run:", files);
+
+      const outputFile = files.find(f => f.startsWith(path.basename(tmpFileTemplate).split(".")[0]));
+      if (outputFile) {
+        console.log("✅ Found output file:", outputFile);
+        return path.join("/tmp", outputFile);
       }
+    } catch (err) {
+      console.error("❌ yt-dlp exec failed:", err);
     }
-    return null;
   }
+
+  throw new Error("Video file not created");
+}
+
 
   try {
     const finalFile = await downloadVideo(url, ua, referer, tmpFileTemplate);
