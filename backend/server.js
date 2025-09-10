@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // ffmpeg binary path
 // ----------------------------
-const ffmpegPath = path.join(__dirname, "ffmpeg-bin", "ffmpeg");
+const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
 if (!fs.existsSync(ffmpegPath)) {
   console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
@@ -71,6 +71,62 @@ function getPlatformOptions(url) {
 }
 
 // ----------------------------
+// Helper: download video with fallback
+// ----------------------------
+async function downloadVideo(url, ua, referer, tmpFileTemplate) {
+  const argsList = [
+    [
+      "-f",
+      "bestvideo+bestaudio/best",
+      "--merge-output-format",
+      "mp4",
+      "--no-playlist",
+      "--ffmpeg-location",
+      path.join(ffmpegPath, "ffmpeg"),
+      "--no-check-certificate",
+      "--rm-cache-dir",
+      "--user-agent",
+      ua,
+      "--referer",
+      referer,
+      url,
+      "-o",
+      tmpFileTemplate,
+    ],
+    [
+      // fallback: simpler mp4-only format
+      "-f",
+      "mp4",
+      "--no-playlist",
+      "--ffmpeg-location",
+      path.join(ffmpegPath, "ffmpeg"),
+      "--no-check-certificate",
+      "--rm-cache-dir",
+      "--user-agent",
+      ua,
+      "--referer",
+      referer,
+      url,
+      "-o",
+      tmpFileTemplate,
+    ],
+  ];
+
+  for (const args of argsList) {
+    try {
+      console.log("📥 Trying yt-dlp args:", args.join(" "));
+      await ytdlp.exec(args);
+      console.log("✅ yt-dlp finished with current args");
+      return; // success
+    } catch (err) {
+      console.warn("⚠️ yt-dlp attempt failed:", err.message || err.stderr);
+    }
+  }
+
+  throw new Error("yt-dlp failed with all formats");
+}
+
+// ----------------------------
 // Download route
 // ----------------------------
 app.post("/api/download", async (req, res) => {
@@ -79,7 +135,7 @@ app.post("/api/download", async (req, res) => {
 
   console.log("📥 Raw request body:", req.body);
 
-  // 🔗 Normalize Facebook share links
+  // Normalize Facebook share links
   if (url.includes("facebook.com/share/r/")) {
     console.log("🔗 Normalizing Facebook share link:", url);
     const shareMatch = url.match(/facebook\.com\/share\/r\/([^/?]+)/);
@@ -126,41 +182,23 @@ app.post("/api/download", async (req, res) => {
   }
 
   // Step 2: Download
-  const args = [
-    "-f",
-    "bestvideo+bestaudio/best",
-    "--merge-output-format",
-    "mp4",
-    "--no-playlist",
-    "--ffmpeg-location",
-    ffmpegPath,
-    "--no-check-certificate",
-    "--rm-cache-dir",
-    "--user-agent",
-    ua,
-    "--referer",
-    referer,
-    url,
-    "-o",
-    tmpFileTemplate,
-  ];
-
-  console.log("📥 yt-dlp args:", JSON.stringify(args, null, 2));
-
   try {
-    await ytdlp.exec(args);
-    console.log("✅ yt-dlp finished, checking files for template:", tmpFileTemplate);
+    await downloadVideo(url, ua, referer, tmpFileTemplate);
 
+    // check actual file
     const mp4File = tmpFileTemplate.replace("%(ext)s", "mp4");
     const mkvFile = tmpFileTemplate.replace("%(ext)s", "mkv");
-    const fileToSend = fs.existsSync(mp4File)
-      ? mp4File
-      : fs.existsSync(mkvFile)
-      ? mkvFile
-      : null;
+    const webmFile = tmpFileTemplate.replace("%(ext)s", "webm");
+
+    const fileToSend = [mp4File, mkvFile, webmFile].find((f) =>
+      fs.existsSync(f)
+    );
 
     if (!fileToSend) {
-      console.error("❌ No final file found after yt-dlp:", tmpFileTemplate);
+      console.error(
+        "❌ No final file found. /tmp content:",
+        fs.readdirSync("/tmp")
+      );
       return res.status(500).json({ error: "Video file not created" });
     }
 
@@ -170,18 +208,18 @@ app.post("/api/download", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ FULL download failed:", err);
-    if (err?.stderr) console.error("STDERR:", err.stderr.toString());
-    if (err?.stdout) console.error("STDOUT:", err.stdout.toString());
-    if (err?.message) console.error("MESSAGE:", err.message);
-
     if (!res.headersSent) {
-      res.status(500).json({
-        error:
-          "yt-dlp failed: " +
-          (err.stderr || err.message || "Unknown error during download"),
-      });
+      res.status(500).json({ error: err.message });
     }
   }
+
+  req.on("close", () => {
+    console.log("⚡ Client disconnected — cleaning temp file");
+    try {
+      const tmpFiles = [tmpFileTemplate.replace("%(ext)s", "mp4")];
+      tmpFiles.forEach((f) => fs.existsSync(f) && fs.unlinkSync(f));
+    } catch {}
+  });
 });
 
 // ----------------------------
