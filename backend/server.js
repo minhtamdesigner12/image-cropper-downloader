@@ -216,10 +216,19 @@ app.post("/api/download", async (req, res) => {
     }
 
     // ✅ Always send with prefixed + random filename
-    res.download(finalFile, fileName, (err) => {
-      if (err) console.error("❌ Error sending file:", err);
-      fs.unlink(finalFile, () => {});
-    });
+    res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${encodeURIComponent(fileName)}"`
+      );
+      res.setHeader("Content-Type", "video/mp4");
+
+      const filestream = fs.createReadStream(finalFile);
+      filestream.pipe(res);
+
+      filestream.on("end", () => {
+        fs.unlink(finalFile, () => {});
+      });
+
   } catch (err) {
     console.error("❌ FULL download failed:", err);
     if (!res.headersSent) {
