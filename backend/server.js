@@ -131,10 +131,11 @@ app.post("/api/download", async (req, res) => {
   const argsList = [
     [
       "-f",
-      "bestvideo+bestaudio/best",
+      "bv*[vcodec^=avc1]+ba*[acodec^=mp4a]/mp4",  // force H.264 + AAC if available
       "--merge-output-format",
       "mp4",
-      "--recode-video", "mp4",   // 👈 Force re-encode to iOS-friendly MP4
+      "--recode-video",
+      "mp4", // ensures re-encode if codecs mismatch
       "--no-playlist",
       "--ffmpeg-location",
       path.join(ffmpegPath, "ffmpeg"),
@@ -151,7 +152,8 @@ app.post("/api/download", async (req, res) => {
     [
       "-f",
       "mp4",
-      "--recode-video", "mp4",   // 👈 also here
+      "--recode-video",
+      "mp4",
       "--no-playlist",
       "--ffmpeg-location",
       path.join(ffmpegPath, "ffmpeg"),
