@@ -88,6 +88,15 @@ app.post("/api/download", async (req, res) => {
     }
   }
 
+  // 🔗 Normalize Facebook reels
+  if (url.includes("facebook.com/reel/")) {
+    console.log("🔗 Normalizing Facebook reel link:", url);
+    const reelMatch = url.match(/facebook\.com\/reel\/(\d+)/);
+    if (reelMatch) {
+      url = `https://www.facebook.com/watch?v=${reelMatch[1]}`;
+    }
+  }
+
   console.log("📥 Extracted URL:", url);
 
   const platformOptions = getPlatformOptions(url);
@@ -136,7 +145,7 @@ app.post("/api/download", async (req, res) => {
         "--merge-output-format",
         "mp4",
         "--recode-video",
-        "mp4", // force compatibility
+        "mp4",
         "--no-playlist",
         "--ffmpeg-location",
         path.join(ffmpegPath, "ffmpeg"),
@@ -152,6 +161,8 @@ app.post("/api/download", async (req, res) => {
       ],
       [
         "-f",
+        "b[ext=mp4]",
+        "--merge-output-format",
         "mp4",
         "--recode-video",
         "mp4",
