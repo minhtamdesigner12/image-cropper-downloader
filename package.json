@@ -13,21 +13,15 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "data-uri-to-buffer": "^4.0.1",
     "express": "^4.18.2",
-    "fetch-blob": "^3.2.0",
-    "formdata-polyfill": "^4.0.10",
     "heic2any": "^0.0.4",
     "next": "^15.5.2",
-    "node-domexception": "^1.0.0",
-    "node-fetch": "^3.3.2",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.4.149",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-easy-crop": "^5.0.6",
     "react-image-crop": "^11.0.10",
-    "web-streams-polyfill": "^3.3.3",
     "yt-dlp-wrap": "^2.3.12"
   },
   "devDependencies": {
