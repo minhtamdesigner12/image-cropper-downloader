@@ -5,18 +5,18 @@ BACKEND_DIR="./backend"
 FFMPEG_DIR="$BACKEND_DIR/ffmpeg-bin"
 
 echo "🚀 Installing yt-dlp..."
-# Detect OS and pick correct yt-dlp binary
-OS_TYPE=$(uname)
+
+# Detect platform
+OS_TYPE=$(uname -s)
+
+# Default: Linux binary for containers like Railway
 if [[ "$OS_TYPE" == "Darwin" ]]; then
   YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
-elif [[ "$OS_TYPE" == "Linux" ]]; then
-  YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux"
 else
-  echo "❌ Unsupported OS: $OS_TYPE"
-  exit 1
+  YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux"
 fi
 
-# Download yt-dlp
+# Download yt-dlp (overwrite if exists)
 curl -L "$YTDLP_URL" -o "$BACKEND_DIR/yt-dlp"
 chmod +x "$BACKEND_DIR/yt-dlp"
 echo "✅ yt-dlp installed at $BACKEND_DIR/yt-dlp"
@@ -29,7 +29,7 @@ if [[ ! -f "$FFMPEG_DIR/ffmpeg" ]]; then
   mkdir -p "$FFMPEG_DIR"
 
   if [[ "$OS_TYPE" == "Darwin" ]]; then
-    echo "⚠️ Mac detected, assuming ffmpeg already installed via brew"
+    echo "⚠️ Mac detected, assuming ffmpeg installed via brew"
     ln -sf /opt/homebrew/bin/ffmpeg "$FFMPEG_DIR/ffmpeg"
   else
     # Linux static build
