@@ -13,10 +13,17 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // ffmpeg binary path
 // ----------------------------
-const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
-if (!fs.existsSync(ffmpegPath)) {
-  console.error("❌ ffmpeg binary not found:", ffmpegPath);
-  process.exit(1);
+let ffmpegPath = path.join(__dirname, "ffmpeg-bin");
+
+// If ffmpeg-bin is missing or not valid, fall back to system ffmpeg
+try {
+  if (!fs.existsSync(ffmpegPath) || fs.lstatSync(ffmpegPath).isDirectory()) {
+    console.warn("⚠️ ffmpeg-bin missing or invalid, falling back to system ffmpeg");
+    ffmpegPath = "ffmpeg"; // rely on PATH
+  }
+} catch (err) {
+  console.warn("⚠️ ffmpeg check failed, falling back to system ffmpeg:", err.message);
+  ffmpegPath = "ffmpeg";
 }
 
 // ----------------------------
@@ -175,7 +182,7 @@ app.post("/api/download", async (req, res) => {
     "-f", "b[ext=mp4]",
     "--merge-output-format", "mp4",
     "--no-playlist",
-    "--ffmpeg-location", path.join(ffmpegPath, "ffmpeg"),
+    "--ffmpeg-location", ffmpegPath,
     "--no-check-certificate",
     "--rm-cache-dir",
     "--user-agent", ua,
