@@ -31,6 +31,11 @@ if (!fs.existsSync(ytdlpPath)) {
 const ytdlp = new YtDlpWrap(ytdlpPath);
 
 // ----------------------------
+// Cookie file (optional)
+// ----------------------------
+const cookiesFile = path.join(__dirname, "cookies.txt");
+
+// ----------------------------
 // Middleware (CORS + JSON)
 // ----------------------------
 app.use(
@@ -112,6 +117,7 @@ app.post("/api/download", async (req, res) => {
 
   // default filename with random ID
   let baseFileName = `freetlo.com-video`;
+  let fileName = `${baseFileName}-${shortId()}.mp4`;
 
   // Step 1: Metadata
   console.log("⚡ Fetching metadata with yt-dlp...");
@@ -123,64 +129,46 @@ app.post("/api/download", async (req, res) => {
       ua,
       "--referer",
       referer,
+      ...(fs.existsSync(cookiesFile) ? ["--cookies", cookiesFile] : []),
       url,
     ]);
     const meta = JSON.parse(jsonOut);
-
     if (meta?.title) {
-      const safeTitle = meta.title
-        .replace(/[^a-z0-9_\-]+/gi, "_")
-        .substring(0, 80);
-      baseFileName = `freetlo.com-${safeTitle}`;
+      baseFileName =
+        "freetlo.com-" +
+        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80);
+      fileName = `${baseFileName}-${shortId()}.mp4`;
+      console.log("✅ Metadata fetch success, filename:", fileName);
     }
   } catch (metaErr) {
-    console.warn("⚠️ Metadata fetch failed, using default filename:", baseFileName);
+    console.warn("⚠️ Metadata fetch failed, using default filename:", fileName);
   }
-
-  // ✅ Final filename: always add random suffix
-  const fileName = `${baseFileName}-${shortId()}.mp4`;
-  console.log("🎯 Final filename chosen:", fileName);
 
   // Step 2: Download
   async function downloadVideo(url, ua, referer, tmpFileTemplate) {
+    const argsBase = [
+      "--no-playlist",
+      "--ffmpeg-location", path.join(ffmpegPath, "ffmpeg"),
+      "--no-check-certificate",
+      "--rm-cache-dir",
+      "--user-agent", ua,
+      "--referer", referer,
+      ...(fs.existsSync(cookiesFile) ? ["--cookies", cookiesFile] : []),
+      url,
+      "-o", tmpFileTemplate,
+    ];
+
     const argsList = [
       [
-        "-f",
-        "bv*[vcodec^=avc1]+ba*[acodec^=mp4a]/b[ext=mp4]/best",
-        "--merge-output-format",
-        "mp4",
-        "--recode-video",
-        "mp4",
-        "--no-playlist",
-        "--ffmpeg-location",
-        path.join(ffmpegPath, "ffmpeg"),
-        "--no-check-certificate",
-        "--rm-cache-dir",
-        "--user-agent",
-        ua,
-        "--referer",
-        referer,
-        url,
-        "-o",
-        tmpFileTemplate,
+        "-f", "bv*[vcodec^=avc1]+ba*[acodec^=mp4a]/b[ext=mp4]/best",
+        "--merge-output-format", "mp4",
+        "--recode-video", "mp4",
+        ...argsBase,
       ],
       [
-        "-f",
-        "mp4",
-        "--recode-video",
-        "mp4",
-        "--no-playlist",
-        "--ffmpeg-location",
-        path.join(ffmpegPath, "ffmpeg"),
-        "--no-check-certificate",
-        "--rm-cache-dir",
-        "--user-agent",
-        ua,
-        "--referer",
-        referer,
-        url,
-        "-o",
-        tmpFileTemplate,
+        "-f", "b[ext=mp4]",
+        "--recode-video", "mp4",
+        ...argsBase,
       ],
     ];
 
@@ -218,7 +206,7 @@ app.post("/api/download", async (req, res) => {
       return res.status(500).json({ error: "Video file not created" });
     }
 
-    // ✅ Send with unique filename
+    // ✅ Always send with prefixed + random filename
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${encodeURIComponent(fileName)}"`
@@ -259,4 +247,9 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Backend running on port ${PORT}`);
   console.log("🎯 Using yt-dlp binary:", ytdlpPath);
   console.log("🎯 Using ffmpeg binary:", ffmpegPath);
+  if (fs.existsSync(cookiesFile)) {
+    console.log("🍪 Using cookies file:", cookiesFile);
+  } else {
+    console.log("⚠️ No cookies file found, continuing without authentication");
+  }
 });
