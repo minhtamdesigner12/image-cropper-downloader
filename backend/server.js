@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-const { spawn } = require("child_process");
+const { spawn, execSync } = require("child_process");
 const urlModule = require("url");
 const crypto = require("crypto");
 
@@ -25,6 +25,27 @@ if (!fs.existsSync(ffmpegPath)) {
 const ytdlpPath = path.join(__dirname, "yt-dlp");
 if (!fs.existsSync(ytdlpPath)) {
   console.error("❌ yt-dlp binary not found:", ytdlpPath);
+  process.exit(1);
+}
+
+// ----------------------------
+// Verify binaries
+// ----------------------------
+try {
+  const ytVersion = execSync(`${ytdlpPath} --version`).toString().trim();
+  console.log(`🎯 yt-dlp version: ${ytVersion}`);
+} catch {
+  console.error("❌ yt-dlp failed to execute. Check postinstall.sh");
+  process.exit(1);
+}
+
+try {
+  const ffVersion = execSync(`${path.join(ffmpegPath, "ffmpeg")} -version`)
+    .toString()
+    .split("\n")[0];
+  console.log(`🎯 ffmpeg version: ${ffVersion}`);
+} catch {
+  console.error("❌ ffmpeg failed to execute");
   process.exit(1);
 }
 
@@ -58,7 +79,7 @@ app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
 function getPlatformOptions(url) {
   const hostname = urlModule.parse(url).hostname || "";
   let referer = "";
-  let ua =
+  const ua =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
   if (hostname.includes("x.com") || hostname.includes("twitter.com")) referer = "https://x.com/";
@@ -78,26 +99,6 @@ function shortId(len = 6) {
 }
 
 // ----------------------------
-// Auto-update yt-dlp on start
-// ----------------------------
-function updateYtDlp() {
-  return new Promise((resolve, reject) => {
-    console.log("⬆️ Updating yt-dlp to latest version...");
-    const proc = spawn(ytdlpPath, ["-U"]);
-    proc.stdout.on("data", (d) => console.log("yt-dlp:", d.toString().trim()));
-    proc.stderr.on("data", (d) => console.error("yt-dlp err:", d.toString().trim()));
-    proc.on("close", (code) => {
-      if (code === 0) {
-        console.log("✅ yt-dlp update complete");
-        resolve();
-      } else {
-        reject(new Error("yt-dlp update failed with code " + code));
-      }
-    });
-  });
-}
-
-// ----------------------------
 // Download route
 // ----------------------------
 app.post("/api/download", async (req, res) => {
@@ -114,7 +115,9 @@ app.post("/api/download", async (req, res) => {
 
   const platformOptions = getPlatformOptions(url);
   if (!platformOptions) {
-    return res.status(403).json({ error: "YouTube downloads are skipped to avoid bot detection" });
+    return res
+      .status(403)
+      .json({ error: "YouTube downloads are skipped to avoid bot detection" });
   }
 
   // Check Facebook cookies
@@ -128,10 +131,10 @@ app.post("/api/download", async (req, res) => {
   console.log("🎬 Starting download for:", url);
 
   const tmpFileTemplate = path.join("/tmp", `tmp_${Date.now()}.%(ext)s`);
-  let baseFileName = `freetlo.com-video`;
+  let baseFileName = "freetlo.com-video";
   let fileName = `${baseFileName}-${shortId()}.mp4`;
 
-  // Step 1: Metadata
+  // Step 1: Fetch metadata
   try {
     const metaProc = spawn(ytdlpPath, [
       "--dump-json",
@@ -162,19 +165,25 @@ app.post("/api/download", async (req, res) => {
     console.warn("⚠️ Metadata fetch failed, using default filename:", fileName);
   }
 
-  // Step 2: Download
+  // Step 2: Download video
   const args = [
-    "-f", "b[ext=mp4]",
-    "--merge-output-format", "mp4",
+    "-f",
+    "b[ext=mp4]",
+    "--merge-output-format",
+    "mp4",
     "--no-playlist",
-    "--ffmpeg-location", path.join(ffmpegPath, "ffmpeg"),
+    "--ffmpeg-location",
+    path.join(ffmpegPath, "ffmpeg"),
     "--no-check-certificate",
     "--rm-cache-dir",
-    "--user-agent", ua,
-    "--referer", referer,
+    "--user-agent",
+    ua,
+    "--referer",
+    referer,
     ...(hasCookies ? ["--cookies", cookiesFile] : []),
     url,
-    "-o", tmpFileTemplate,
+    "-o",
+    tmpFileTemplate,
   ];
 
   console.log("📥 Running yt-dlp:", ytdlpPath, args.join(" "));
@@ -186,7 +195,10 @@ app.post("/api/download", async (req, res) => {
   proc.on("close", (code) => {
     if (code !== 0) {
       console.error("❌ yt-dlp exited with code:", code);
-      if (!res.headersSent) return res.status(500).json({ error: "yt-dlp failed: Video file not created" });
+      if (!res.headersSent)
+        return res
+          .status(500)
+          .json({ error: "yt-dlp failed: Video file not created" });
       return;
     }
 
@@ -194,12 +206,16 @@ app.post("/api/download", async (req, res) => {
     const base = path.basename(tmpFileTemplate).split(".")[0];
     const outputFile = files.find((f) => f.startsWith(base));
     if (!outputFile) {
-      if (!res.headersSent) return res.status(500).json({ error: "Video file not created" });
+      if (!res.headersSent)
+        return res.status(500).json({ error: "Video file not created" });
       return;
     }
 
     const finalFile = path.join("/tmp", outputFile);
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(fileName)}"`
+    );
     res.setHeader("Content-Type", "video/mp4");
 
     const filestream = fs.createReadStream(finalFile);
@@ -235,32 +251,26 @@ setInterval(() => {
 }, 60 * 60 * 1000); // every 1 hour
 
 // ----------------------------
-// Start server
+// Start server safely
 // ----------------------------
-async function safeUpdateYtDlp() {
-  if (process.env.NODE_ENV === "production") {
-    console.log("⚠️ Skipping yt-dlp auto-update in production");
-    return;
+async function safeStartServer() {
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      console.log("⬆️ Updating yt-dlp (dev only)...");
+      const proc = spawn(ytdlpPath, ["-U"]);
+      proc.stdout.on("data", (d) => console.log("yt-dlp:", d.toString().trim()));
+      proc.stderr.on("data", (d) => console.error("yt-dlp err:", d.toString().trim()));
+      await new Promise((resolve, reject) =>
+        proc.on("close", (code) => (code === 0 ? resolve() : reject(new Error("yt-dlp update failed"))))
+      );
+      console.log("✅ yt-dlp update complete");
+    } catch (err) {
+      console.warn("⚠️ yt-dlp update skipped:", err.message);
+    }
+  } else {
+    console.log("⚠️ Skipping yt-dlp update in production");
   }
 
-  try {
-    console.log("⬆️ Updating yt-dlp to latest version...");
-    const proc = spawn(ytdlpPath, ["-U"]);
-    proc.stdout.on("data", (d) => console.log("yt-dlp:", d.toString().trim()));
-    proc.stderr.on("data", (d) => console.error("yt-dlp err:", d.toString().trim()));
-    await new Promise((resolve, reject) => {
-      proc.on("close", (code) => {
-        if (code === 0) resolve();
-        else reject(new Error("yt-dlp update failed with code " + code));
-      });
-    });
-    console.log("✅ yt-dlp update complete");
-  } catch (err) {
-    console.warn("⚠️ yt-dlp update skipped:", err.message);
-  }
-}
-
-safeUpdateYtDlp().finally(() => {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Backend running on port ${PORT}`);
     console.log("🎯 Using yt-dlp binary:", ytdlpPath);
@@ -268,5 +278,6 @@ safeUpdateYtDlp().finally(() => {
     if (hasCookies) console.log("🍪 Using cookies file:", cookiesFile);
     else console.log("⚠️ No cookies file found, Facebook may fail");
   });
-});
+}
 
+safeStartServer();
