@@ -20,14 +20,13 @@ if (!fs.existsSync(ffmpegPath)) {
 }
 
 // ----------------------------
-// yt-dlp binary path
+// yt-dlp static binary path
 // ----------------------------
-const ytdlpPath = path.join(__dirname, "yt-dlp");
+const ytdlpPath = path.join(__dirname, "yt-dlp"); // ✅ static binary
 if (!fs.existsSync(ytdlpPath)) {
   console.error("❌ yt-dlp binary not found:", ytdlpPath);
   process.exit(1);
 }
-
 const ytdlp = new YtDlpWrap(ytdlpPath);
 
 // ----------------------------
@@ -175,9 +174,7 @@ app.post("/api/download", async (req, res) => {
     for (const args of argsList) {
       try {
         console.log("📥 Trying yt-dlp args:", args.join(" "));
-
         const { stdout, stderr } = await ytdlp.execPromise(args);
-
         if (stdout) console.log("▶ yt-dlp stdout:", stdout.toString());
         if (stderr) console.log("⚠️ yt-dlp stderr:", stderr.toString());
 
@@ -234,7 +231,7 @@ app.post("/api/download", async (req, res) => {
 // ----------------------------
 app.get("/yt-dlp-version", (_, res) => {
   const { exec } = require("child_process");
-  exec(path.join(__dirname, "yt-dlp") + " --version", (err, stdout, stderr) => {
+  exec(`${ytdlpPath} --version`, (err, stdout, stderr) => {
     if (err) return res.status(500).send(stderr);
     res.send(stdout);
   });
