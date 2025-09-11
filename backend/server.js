@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-const YtDlpWrap = require("yt-dlp-wrap").default;
+const { spawn } = require("child_process");
 const urlModule = require("url");
 const crypto = require("crypto");
 
@@ -11,31 +11,24 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // ----------------------------
-// ffmpeg binary path
+// ffmpeg & yt-dlp paths
 // ----------------------------
-const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
+const ffmpegPath = path.join(__dirname, "ffmpeg-bin/ffmpeg");
+const ytdlpPath = path.join(__dirname, "yt-dlp");
+
 if (!fs.existsSync(ffmpegPath)) {
   console.error("❌ ffmpeg binary not found:", ffmpegPath);
   process.exit(1);
 }
-
-// ----------------------------
-// yt-dlp static binary path
-// ----------------------------
-const ytdlpPath = path.join(__dirname, "yt-dlp"); // ✅ static binary
 if (!fs.existsSync(ytdlpPath)) {
   console.error("❌ yt-dlp binary not found:", ytdlpPath);
   process.exit(1);
 }
-const ytdlp = new YtDlpWrap(ytdlpPath);
 
-// ----------------------------
-// Cookie file (optional)
-// ----------------------------
 const cookiesFile = path.join(__dirname, "cookies.txt");
 
 // ----------------------------
-// Middleware (CORS + JSON)
+// Middleware
 // ----------------------------
 app.use(
   cors({
@@ -48,12 +41,7 @@ app.use(express.json({ limit: "50mb" }));
 app.options("*", cors());
 
 // ----------------------------
-// Health check
-// ----------------------------
-app.get("/ping", (_, res) => res.json({ status: "ok", message: "pong" }));
-
-// ----------------------------
-// Helper: detect platform
+// Helpers
 // ----------------------------
 function getPlatformOptions(url) {
   const hostname = urlModule.parse(url).hostname || "";
@@ -61,25 +49,34 @@ function getPlatformOptions(url) {
   let ua =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  if (hostname.includes("x.com") || hostname.includes("twitter.com"))
-    referer = "https://x.com/";
-  else if (hostname.includes("facebook.com"))
-    referer = "https://www.facebook.com/";
+  if (hostname.includes("facebook.com")) referer = "https://www.facebook.com/";
   else if (hostname.includes("instagram.com"))
     referer = "https://www.instagram.com/";
-  else if (hostname.includes("tiktok.com"))
-    referer = "https://www.tiktok.com/";
+  else if (hostname.includes("tiktok.com")) referer = "https://www.tiktok.com/";
+  else if (hostname.includes("x.com") || hostname.includes("twitter.com"))
+    referer = "https://x.com/";
   else if (hostname.includes("youtube.com") || hostname.includes("youtu.be"))
     return null;
 
   return { referer, ua };
 }
 
-// ----------------------------
-// Helper: short random ID
-// ----------------------------
 function shortId(len = 6) {
   return crypto.randomBytes(len).toString("base64url").substring(0, len);
+}
+
+// ----------------------------
+// Normalize Facebook share links
+// ----------------------------
+function normalizeFacebookUrl(url) {
+  if (url.includes("facebook.com/share/")) {
+    console.log("🔗 Normalizing Facebook share link:", url);
+    const vidMatch = url.match(/\/share\/[a-z]\/([^/?&]+)/i);
+    if (vidMatch) {
+      return `https://www.facebook.com/watch?v=${vidMatch[1]}`;
+    }
+  }
+  return url;
 }
 
 // ----------------------------
@@ -90,16 +87,7 @@ app.post("/api/download", async (req, res) => {
   if (!url) return res.status(400).json({ error: "No URL provided" });
 
   console.log("📥 Raw request body:", req.body);
-
-  // 🔗 Normalize Facebook share links
-  if (url.includes("facebook.com/share/r/")) {
-    console.log("🔗 Normalizing Facebook share link:", url);
-    const shareMatch = url.match(/facebook\.com\/share\/r\/([^/?&]+)/);
-    if (shareMatch) {
-      url = `https://www.facebook.com/watch?v=${shareMatch[1]}`;
-    }
-  }
-
+  url = normalizeFacebookUrl(url);
   console.log("📥 Extracted URL:", url);
 
   const platformOptions = getPlatformOptions(url);
@@ -113,97 +101,66 @@ app.post("/api/download", async (req, res) => {
   console.log("🎬 Starting download for:", url);
 
   const tmpFileTemplate = path.join("/tmp", `tmp_${Date.now()}.%(ext)s`);
+  let fileName = `freetlo.com-video-${shortId()}.mp4`;
 
-  // default filename with random ID
-  let baseFileName = `freetlo.com-video`;
-  let fileName = `${baseFileName}-${shortId()}.mp4`;
+  async function downloadVideo() {
+    return new Promise((resolve, reject) => {
+      const args = [
+        "-f",
+        "b[ext=mp4]",
+        "--merge-output-format",
+        "mp4",
+        "--no-playlist",
+        "--ffmpeg-location",
+        ffmpegPath,
+        "--no-check-certificate",
+        "--rm-cache-dir",
+        "--user-agent",
+        ua,
+        "--referer",
+        referer,
+        ...(fs.existsSync(cookiesFile) ? ["--cookies", cookiesFile] : []),
+        url,
+        "-o",
+        tmpFileTemplate,
+      ];
 
-  // Step 1: Metadata
-  console.log("⚡ Fetching metadata with yt-dlp...");
-  try {
-    const jsonOut = await ytdlp.execPromise([
-      "--dump-json",
-      "--no-playlist",
-      "--user-agent",
-      ua,
-      "--referer",
-      referer,
-      ...(fs.existsSync(cookiesFile) ? ["--cookies", cookiesFile] : []),
-      url,
-    ]);
-    const meta = JSON.parse(jsonOut);
-    if (meta?.title) {
-      baseFileName =
-        "freetlo.com-" +
-        meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80);
-      fileName = `${baseFileName}-${shortId()}.mp4`;
-      console.log("✅ Metadata fetch success, filename:", fileName);
-    }
-  } catch (metaErr) {
-    console.warn("⚠️ Metadata fetch failed, using default filename:", fileName);
-  }
+      console.log("📥 Running yt-dlp:", [ytdlpPath, ...args].join(" "));
 
-  // Step 2: Download
-  async function downloadVideo(url, ua, referer, tmpFileTemplate) {
-    const argsBase = [
-      "--no-playlist",
-      "--ffmpeg-location", path.join(ffmpegPath, "ffmpeg"),
-      "--no-check-certificate",
-      "--rm-cache-dir",
-      "--user-agent", ua,
-      "--referer", referer,
-      ...(fs.existsSync(cookiesFile) ? ["--cookies", cookiesFile] : []),
-      url,
-      "-o", tmpFileTemplate,
-    ];
+      const proc = spawn(ytdlpPath, args);
 
-    const argsList = [
-      [
-        "-f", "bv*[vcodec^=avc1]+ba*[acodec^=mp4a]/b[ext=mp4]/best",
-        "--merge-output-format", "mp4",
-        "--recode-video", "mp4",
-        ...argsBase,
-      ],
-      [
-        "-f", "b[ext=mp4]",
-        "--recode-video", "mp4",
-        ...argsBase,
-      ],
-    ];
+      let stderr = "";
+      let stdout = "";
 
-    for (const args of argsList) {
-      try {
-        console.log("📥 Trying yt-dlp args:", args.join(" "));
-        const { stdout, stderr } = await ytdlp.execPromise(args);
-        if (stdout) console.log("▶ yt-dlp stdout:", stdout.toString());
-        if (stderr) console.log("⚠️ yt-dlp stderr:", stderr.toString());
+      proc.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
 
-        // Check if file created
+      proc.on("close", (code) => {
+        console.log("▶ yt-dlp exited with code:", code);
+        if (stdout) console.log("▶ yt-dlp stdout:", stdout);
+        if (stderr) console.error("⚠️ yt-dlp stderr:", stderr);
+
         const files = fs.readdirSync("/tmp");
-        console.log("📂 /tmp content after run:", files);
+        console.log("📂 /tmp content:", files);
 
         const base = path.basename(tmpFileTemplate).split(".")[0];
         const outputFile = files.find((f) => f.startsWith(base));
         if (outputFile) {
           console.log("✅ Found output file:", outputFile);
-          return path.join("/tmp", outputFile);
+          resolve(path.join("/tmp", outputFile));
+        } else {
+          reject(new Error("Video file not created"));
         }
-      } catch (err) {
-        console.error("❌ yt-dlp exec failed:", err);
-      }
-    }
-
-    throw new Error("Video file not created");
+      });
+    });
   }
 
   try {
-    const finalFile = await downloadVideo(url, ua, referer, tmpFileTemplate);
-    if (!finalFile) {
-      console.error("❌ No final file created");
-      return res.status(500).json({ error: "Video file not created" });
-    }
-
-    // ✅ Always send with prefixed + random filename
+    const finalFile = await downloadVideo();
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${encodeURIComponent(fileName)}"`
@@ -224,17 +181,6 @@ app.post("/api/download", async (req, res) => {
       });
     }
   }
-});
-
-// ----------------------------
-// yt-dlp version check
-// ----------------------------
-app.get("/yt-dlp-version", (_, res) => {
-  const { exec } = require("child_process");
-  exec(`${ytdlpPath} --version`, (err, stdout, stderr) => {
-    if (err) return res.status(500).send(stderr);
-    res.send(stdout);
-  });
 });
 
 // ----------------------------
