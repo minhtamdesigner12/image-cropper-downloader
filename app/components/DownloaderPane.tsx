@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-const BACKEND_URL = "https://image-cropper-downloader-production.up.railway.app/api/download";
+const BACKEND_URL =
+  "https://image-cropper-downloader-production.up.railway.app/api/download";
 
 export default function DownloaderPane() {
   const [url, setUrl] = useState("");
@@ -16,13 +17,13 @@ export default function DownloaderPane() {
       } else {
         alert("Clipboard is empty.");
       }
-    } catch (err) {
+    } catch {
       alert("Failed to read clipboard. Please paste manually.");
     }
   };
 
   const handleDownload = async () => {
-    if (!url) return alert("Paste a video URL first");
+    if (!url.trim()) return alert("Please paste a video URL first!");
     setLoading(true);
 
     try {
@@ -34,34 +35,42 @@ export default function DownloaderPane() {
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(`Download failed: ${errText}`);
+        throw new Error(errText || "Download failed");
       }
 
-      // Extract filename from Content-Disposition header
       const blob = await res.blob();
+
+      // ✅ Filename handling
+      let fileName = `freetlo.com-video-${Date.now()}.mp4`; // unique fallback
       const cdHeader = res.headers.get("Content-Disposition");
-      let fileName = "video.mp4";
       if (cdHeader) {
         const match = cdHeader.match(/filename="(.+)"/);
-        if (match && match[1]) fileName = match[1];
+        if (match && match[1]) {
+          const original = decodeURIComponent(match[1]);
+          const safeName = original.replace(/[^a-z0-9_\-\.]+/gi, "_");
+          fileName = safeName.startsWith("freetlo.com-")
+            ? safeName
+            : `freetlo.com-${safeName}`;
+        }
       }
 
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
+      // ✅ Trigger browser download
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
     } catch (err: any) {
-      alert("Download error: " + (err?.message || "unknown"));
+      alert("Download error: " + (err?.message || "unknown error"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 p-4 border rounded bg-white shadow">
       {/* 🔹 Input + Paste button same row */}
       <div className="flex gap-2">
         <input
@@ -77,16 +86,17 @@ export default function DownloaderPane() {
           className="px-4 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center"
           disabled={loading}
         >
-          Paste URL
+          📋 Paste
         </button>
       </div>
 
+      {/* 🔹 Download button */}
       <button
         onClick={handleDownload}
-        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center justify-center"
         disabled={loading}
       >
-        {loading ? "Downloading..." : "Download Video"}
+        {loading ? "Downloading... please wait" : "⬇️ Download Video"}
       </button>
     </div>
   );

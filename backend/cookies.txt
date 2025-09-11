@@ -2,16 +2,17 @@
 # http://curl.haxx.se/rfc/cookie_spec.html
 # This is a generated file!  Do not edit.
 
-.facebook.com	TRUE	/	TRUE	1779259033	datr	mP79Z96UZ15VpL7LppsZoDHl
+.facebook.com	TRUE	/	TRUE	1792114642	datr	mP79Z96UZ15VpL7LppsZoDHl
 .facebook.com	TRUE	/	TRUE	1779259033	ps_l	1
 .facebook.com	TRUE	/	TRUE	1779259033	ps_n	1
-.facebook.com	TRUE	/	TRUE	1779259035	sb	mv79ZzDlRO3gOlIBUsMCfq87
-.facebook.com	TRUE	/	TRUE	1758158533	dpr	1
-.facebook.com	TRUE	/	TRUE	1765329638	fr	0iG4Hjx7RF7S2udVj.AWckzgefBZJSg1161QXpmoBDVUAzn1FkoUonRz4Ff3Ldxd_63gc.BoWjpE..AAA.0.0.BowiPk.AWduWBSIykh3Zr4M7sXENDr6yo4
-.facebook.com	TRUE	/	TRUE	0	sfau	AYiLoDnD5GWu83hrImVV9rpTZLzrsNw7GBT_UTuf25b-3ewbWtYTHvgq0QMDGDCdK4yTD_HnZtzWDUmJ1KsoWGAU5HTc2eie5vE5GQrkTvbR2eLXfIhLa4TyEn7-jHozdhtGqJD04M-_hJWvNhAW3swVEdv84ImrjZ1_tZsTjFkTpjJLAECGxM8ChrdF0vg6F5BTdf_U3FgALt2_UgvP0dpipMMMB5Yk7qg_-pGp71vfNprwwELpcZOMmTzp784jM67jC5cWdHk4l_YV6yMo29SgGXwrZNKWa-WOznOZD66NKNLp_pcz7o-L_kVFLgdu8bYi47uX9L9QM6rVyKV2sJryi7KXqSx4nVRsXsSCt2g0jA
-.facebook.com	TRUE	/	TRUE	1758158542	wd	1245x1243
-.facebook.com	TRUE	/	TRUE	0	sfiu	AYiZy0ykPKANPLk-RzBnmQn8JzbvqYzLdKRZ1UoUcS7GK_DQkxuQgXwZ_Zrl82t6NLVT2ZQuKzA8hKnbLDNuMmV2NpFRmr-863N8G1u9CDioQxWGff2mP_Cjz5fAlTB54jluxAyUzQfl-sENuw4AQtIy13972TiEyct-1x4LDQvZnFSehErPn0YI0PY46DMBZ4yVT4RDxIfmEabtIb4KFiCpb1um9p4Zb_ggRfUzMPQ5wpjD8aRZ-YUf61Sr8j42MjpLcR4chJsIFPnTfxFhuWs-t3tyw-Y_YVAINMP7CUS-JIo5v1xr51zeGjMrMBa27_Ne-BirEFHddqL19tRgabIIaneVWYpjIa5nS16My0vlHg
-
+.facebook.com	TRUE	/	TRUE	1792114918	sb	mv79ZzDlRO3gOlIBUsMCfq87
+.facebook.com	TRUE	/	TRUE	1758159733	dpr	1
+.facebook.com	TRUE	/	TRUE	1758159733	wd	1245x1243
+.facebook.com	TRUE	/	TRUE	1758159465	locale	en_US
+.facebook.com	TRUE	/	TRUE	1789090918	c_user	100000721049143
+.facebook.com	TRUE	/	TRUE	1789090918	xs	41%3A6TWdanu2Enqh8Q%3A2%3A1757554916%3A-1%3A-1
+.facebook.com	TRUE	/	TRUE	1765330931	fr	0iG4Hjx7RF7S2udVj.AWfg4f90rU4Wk2fS5KYnPtcJPbaVpkL59szZN-XgnH-niXg6vaI.BoWjpE..AAA.0.0.Bowijy.AWfxV4v6dkv0W2GDlayTXVR7B1M
+.facebook.com	TRUE	/	TRUE	0	presence	C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1757554933451%2C%22v%22%3A1%7D
 
 
 
