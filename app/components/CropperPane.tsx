@@ -266,7 +266,7 @@ export default function CropperPane() {
               onClick={downloadCropped}
               className="px-6 py-3 rounded bg-green-600 text-white font-semibold shadow hover:bg-green-700"
             >
-              Crop & Download
+              Crop & Download PNG
             </button>
           </div>
         </>
