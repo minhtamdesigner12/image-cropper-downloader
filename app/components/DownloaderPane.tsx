@@ -12,11 +12,8 @@ export default function DownloaderPane() {
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      if (text) {
-        setUrl(text);
-      } else {
-        alert("Clipboard is empty.");
-      }
+      if (text) setUrl(text);
+      else alert("Clipboard is empty.");
     } catch {
       alert("Failed to read clipboard. Please paste manually.");
     }
@@ -34,14 +31,17 @@ export default function DownloaderPane() {
       });
 
       if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "Download failed");
+        const errJson = await res.json().catch(() => null);
+        const msg =
+          errJson?.error ||
+          "Download failed: Unknown error (maybe platform not supported)";
+        throw new Error(msg);
       }
 
       const blob = await res.blob();
 
       // ✅ Filename handling
-      let fileName = `freetlo.com-video-${Date.now()}.mp4`; // unique fallback
+      let fileName = `freetlo.com-video-${Date.now()}.mp4`;
       const cdHeader = res.headers.get("Content-Disposition");
       if (cdHeader) {
         const match = cdHeader.match(/filename="(.+)"/);
@@ -71,7 +71,7 @@ export default function DownloaderPane() {
 
   return (
     <div className="space-y-3 p-4 border rounded bg-white shadow">
-      {/* 🔹 Input + Paste button same row */}
+      {/* Input + Paste */}
       <div className="flex gap-2">
         <input
           type="text"
@@ -90,7 +90,7 @@ export default function DownloaderPane() {
         </button>
       </div>
 
-      {/* 🔹 Download button */}
+      {/* Download */}
       <button
         onClick={handleDownload}
         className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center justify-center"
@@ -98,6 +98,11 @@ export default function DownloaderPane() {
       >
         {loading ? "Downloading... please wait" : "⬇️ Download Video"}
       </button>
+
+      {/* Helpful note */}
+      <p className="text-xs text-gray-500 mt-2">
+        ⚠️ YouTube downloads are not supported. Facebook may require cookies.
+      </p>
     </div>
   );
 }
