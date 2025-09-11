@@ -13,17 +13,10 @@ const PORT = process.env.PORT || 8080;
 // ----------------------------
 // ffmpeg binary path
 // ----------------------------
-let ffmpegPath = path.join(__dirname, "ffmpeg-bin");
-
-// If ffmpeg-bin is missing or not valid, fall back to system ffmpeg
-try {
-  if (!fs.existsSync(ffmpegPath) || fs.lstatSync(ffmpegPath).isDirectory()) {
-    console.warn("⚠️ ffmpeg-bin missing or invalid, falling back to system ffmpeg");
-    ffmpegPath = "ffmpeg"; // rely on PATH
-  }
-} catch (err) {
-  console.warn("⚠️ ffmpeg check failed, falling back to system ffmpeg:", err.message);
-  ffmpegPath = "ffmpeg";
+const ffmpegPath = path.join(__dirname, "ffmpeg-bin");
+if (!fs.existsSync(ffmpegPath)) {
+  console.error("❌ ffmpeg binary not found:", ffmpegPath);
+  process.exit(1);
 }
 
 // ----------------------------
@@ -39,6 +32,7 @@ if (!fs.existsSync(ytdlpPath)) {
 // Cookie file (optional)
 // ----------------------------
 const cookiesFile = path.join(__dirname, "cookies.txt");
+const hasCookies = fs.existsSync(cookiesFile);
 
 // ----------------------------
 // Middleware (CORS + JSON)
@@ -67,16 +61,11 @@ function getPlatformOptions(url) {
   let ua =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-  if (hostname.includes("x.com") || hostname.includes("twitter.com"))
-    referer = "https://x.com/";
-  else if (hostname.includes("facebook.com"))
-    referer = "https://www.facebook.com/";
-  else if (hostname.includes("instagram.com"))
-    referer = "https://www.instagram.com/";
-  else if (hostname.includes("tiktok.com"))
-    referer = "https://www.tiktok.com/";
-  else if (hostname.includes("youtube.com") || hostname.includes("youtu.be"))
-    return null;
+  if (hostname.includes("x.com") || hostname.includes("twitter.com")) referer = "https://x.com/";
+  else if (hostname.includes("facebook.com")) referer = "https://www.facebook.com/";
+  else if (hostname.includes("instagram.com")) referer = "https://www.instagram.com/";
+  else if (hostname.includes("tiktok.com")) referer = "https://www.tiktok.com/";
+  else if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) return null; // skip YouTube
 
   return { referer, ua };
 }
@@ -117,30 +106,28 @@ app.post("/api/download", async (req, res) => {
 
   console.log("📥 Raw request body:", req.body);
 
-  // 🔗 Normalize Facebook share links
+  // Normalize Facebook share links
   if (url.includes("facebook.com/share/")) {
-    console.log("🔗 Normalizing Facebook share link:", url);
     const shareMatch = url.match(/facebook\.com\/share\/[vr]\/([^/?&]+)/);
-    if (shareMatch) {
-      url = `https://www.facebook.com/watch?v=${shareMatch[1]}`;
-    }
+    if (shareMatch) url = `https://www.facebook.com/watch?v=${shareMatch[1]}`;
   }
-
-  console.log("📥 Extracted URL:", url);
 
   const platformOptions = getPlatformOptions(url);
   if (!platformOptions) {
-    return res
-      .status(403)
-      .json({ error: "YouTube downloads are skipped to avoid bot detection" });
+    return res.status(403).json({ error: "YouTube downloads are skipped to avoid bot detection" });
+  }
+
+  // Check Facebook cookies
+  if (url.includes("facebook.com") && !hasCookies) {
+    return res.status(403).json({
+      error: "Facebook downloads require cookies.txt for authentication",
+    });
   }
 
   const { referer, ua } = platformOptions;
   console.log("🎬 Starting download for:", url);
 
   const tmpFileTemplate = path.join("/tmp", `tmp_${Date.now()}.%(ext)s`);
-
-  // default filename with random ID
   let baseFileName = `freetlo.com-video`;
   let fileName = `${baseFileName}-${shortId()}.mp4`;
 
@@ -153,14 +140,12 @@ app.post("/api/download", async (req, res) => {
       ua,
       "--referer",
       referer,
-      ...(fs.existsSync(cookiesFile) ? ["--cookies", cookiesFile] : []),
+      ...(hasCookies ? ["--cookies", cookiesFile] : []),
       url,
     ]);
 
     let jsonOut = "";
-    for await (const chunk of metaProc.stdout) {
-      jsonOut += chunk.toString();
-    }
+    for await (const chunk of metaProc.stdout) jsonOut += chunk.toString();
     await new Promise((resolve) => metaProc.on("close", resolve));
 
     if (jsonOut) {
@@ -182,12 +167,12 @@ app.post("/api/download", async (req, res) => {
     "-f", "b[ext=mp4]",
     "--merge-output-format", "mp4",
     "--no-playlist",
-    "--ffmpeg-location", ffmpegPath,
+    "--ffmpeg-location", path.join(ffmpegPath, "ffmpeg"),
     "--no-check-certificate",
     "--rm-cache-dir",
     "--user-agent", ua,
     "--referer", referer,
-    ...(fs.existsSync(cookiesFile) ? ["--cookies", cookiesFile] : []),
+    ...(hasCookies ? ["--cookies", cookiesFile] : []),
     url,
     "-o", tmpFileTemplate,
   ];
@@ -201,40 +186,25 @@ app.post("/api/download", async (req, res) => {
   proc.on("close", (code) => {
     if (code !== 0) {
       console.error("❌ yt-dlp exited with code:", code);
-      if (!res.headersSent) {
-        return res.status(500).json({ error: "yt-dlp failed: Video file not created" });
-      }
+      if (!res.headersSent) return res.status(500).json({ error: "yt-dlp failed: Video file not created" });
       return;
     }
 
     const files = fs.readdirSync("/tmp");
-    console.log("📂 /tmp content:", files);
-
     const base = path.basename(tmpFileTemplate).split(".")[0];
     const outputFile = files.find((f) => f.startsWith(base));
     if (!outputFile) {
-      console.error("❌ No output file created");
-      if (!res.headersSent) {
-        return res.status(500).json({ error: "Video file not created" });
-      }
+      if (!res.headersSent) return res.status(500).json({ error: "Video file not created" });
       return;
     }
 
     const finalFile = path.join("/tmp", outputFile);
-    console.log("✅ Final output file:", finalFile);
-
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${encodeURIComponent(fileName)}"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileName)}"`);
     res.setHeader("Content-Type", "video/mp4");
 
     const filestream = fs.createReadStream(finalFile);
     filestream.pipe(res);
-
-    filestream.on("end", () => {
-      fs.unlink(finalFile, () => {});
-    });
+    filestream.on("end", () => fs.unlink(finalFile, () => {}));
   });
 });
 
@@ -256,10 +226,7 @@ setInterval(() => {
     const files = fs.readdirSync("/tmp");
     for (const f of files) {
       if (f.startsWith("tmp_") && f.endsWith(".mp4")) {
-        const fp = path.join("/tmp", f);
-        fs.unlink(fp, () => {
-          console.log("🧹 Cleaned up leftover:", fp);
-        });
+        fs.unlink(path.join("/tmp", f), () => console.log("🧹 Cleaned up leftover:", f));
       }
     }
   } catch (err) {
@@ -275,10 +242,7 @@ updateYtDlp().finally(() => {
     console.log(`🚀 Backend running on port ${PORT}`);
     console.log("🎯 Using yt-dlp binary:", ytdlpPath);
     console.log("🎯 Using ffmpeg binary:", ffmpegPath);
-    if (fs.existsSync(cookiesFile)) {
-      console.log("🍪 Using cookies file:", cookiesFile);
-    } else {
-      console.log("⚠️ No cookies file found, continuing without authentication");
-    }
+    if (hasCookies) console.log("🍪 Using cookies file:", cookiesFile);
+    else console.log("⚠️ No cookies file found, Facebook may fail");
   });
 });
