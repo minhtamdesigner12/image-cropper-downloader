@@ -237,7 +237,30 @@ setInterval(() => {
 // ----------------------------
 // Start server
 // ----------------------------
-updateYtDlp().finally(() => {
+async function safeUpdateYtDlp() {
+  if (process.env.NODE_ENV === "production") {
+    console.log("⚠️ Skipping yt-dlp auto-update in production");
+    return;
+  }
+
+  try {
+    console.log("⬆️ Updating yt-dlp to latest version...");
+    const proc = spawn(ytdlpPath, ["-U"]);
+    proc.stdout.on("data", (d) => console.log("yt-dlp:", d.toString().trim()));
+    proc.stderr.on("data", (d) => console.error("yt-dlp err:", d.toString().trim()));
+    await new Promise((resolve, reject) => {
+      proc.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error("yt-dlp update failed with code " + code));
+      });
+    });
+    console.log("✅ yt-dlp update complete");
+  } catch (err) {
+    console.warn("⚠️ yt-dlp update skipped:", err.message);
+  }
+}
+
+safeUpdateYtDlp().finally(() => {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Backend running on port ${PORT}`);
     console.log("🎯 Using yt-dlp binary:", ytdlpPath);
@@ -246,3 +269,4 @@ updateYtDlp().finally(() => {
     else console.log("⚠️ No cookies file found, Facebook may fail");
   });
 });
+
