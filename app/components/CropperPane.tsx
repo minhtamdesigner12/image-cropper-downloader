@@ -167,17 +167,18 @@ export default function CropperPane() {
   ];
 
   return (
-    <div className="p-6 space-y-6 border rounded shadow bg-white max-w-5xl mx-auto">
+    <div className=" space-y-6 border rounded shadow bg-white max-w-5xl mx-auto">
       {/* Upload */}
-      <div>
-        <label className="block text-sm font-medium mb-2">Upload Image</label>
+      <div className="flex items-center space-x-4">
+        <label className="text-sm font-medium">Upload Image</label>
         <input
           type="file"
           accept="image/*"
           onChange={onSelectFile}
-          className="w-full text-sm file:bg-blue-50 file:px-4 file:py-2 file:rounded file:border file:border-blue-300 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+          className="text-sm file:bg-blue-50 file:px-4 file:py-2 file:rounded file:border file:border-blue-300 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
         />
       </div>
+
 
       {src && (
         <>

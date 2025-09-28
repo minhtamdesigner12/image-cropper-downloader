@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 const BACKEND_URL =
-  "https://image-cropper-downloader-production.up.railway.app/api/download";
+  "https://freetlo.onrender.com/api/download";
 
 export default function DownloaderPane() {
   const [url, setUrl] = useState("");

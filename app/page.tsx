@@ -36,7 +36,7 @@ export default function Page() {
         `}
       </Script>
 
-      <main className="p-4 max-w-4xl mx-auto space-y-12">
+      <main className="p-4 max-w-5xl mx-auto space-y-12">
         {/* 🔹 Header */}
         <header className="flex items-center gap-3 mb-8">
           <Image
@@ -52,8 +52,8 @@ export default function Page() {
         </header>
 
         {/* 🔹 Intro */}
-        <section style={{ marginTop: "20px" }}>
-          <p className="text-gray-700 leading-relaxed">
+        <section style={{ marginTop: "8px" }}>
+          <p className="text-gray-700 text-sm leading-relaxed">
             Welcome to <strong>Freetlo.com</strong> — your free online toolkit for
             downloading videos, cropping images, and creating PDFs. 
             These tools are built to be fast, simple, and accessible for everyone. 
