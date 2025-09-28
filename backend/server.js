@@ -23,7 +23,7 @@ const hasCookies = fs.existsSync(cookiesFile);
 // ----------------------------
 // Middleware
 // ----------------------------
-app.use(cors({ origin: ["https://freetlo.com", "http://localhost:3000", "https://freetlo.onrender.com"], methods: ["GET","POST","OPTIONS"], allowedHeaders: ["Content-Type","Authorization"] }));
+app.use(cors({ origin: ["https://freetlo.com", "http://localhost:3000"], methods: ["GET","POST","OPTIONS"], allowedHeaders: ["Content-Type","Authorization"] }));
 app.use(express.json({ limit: "50mb" }));
 app.options("*", cors());
 
