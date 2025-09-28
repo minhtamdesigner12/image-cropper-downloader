@@ -137,7 +137,7 @@ app.post("/api/download", async (req,res)=>{
     proc.on("close",(code)=>{
         if(code!==0){
             console.error("❌ yt-dlp exited with code:",code);
-            if(!res.headersSent) return res.status(500).json({error:"yt-dlp failed: Video file not created"});
+            if(!res.headersSent) return res.status(500).json({error:"Cannot download this video. It may be private, restricted, or unavailable."});
             return;
         }
         const files = fs.readdirSync("/tmp");

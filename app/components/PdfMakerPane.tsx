@@ -35,7 +35,7 @@ export default function PdfMakerPane() {
     const blob = new Blob([Uint8Array.from(pdfBytes)], { type: "application/pdf" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "output.pdf";
+    link.download = "freetlo.com output.pdf";
     link.click();
     URL.revokeObjectURL(link.href);
   };
