@@ -1,60 +1,54 @@
-"use client";
-
+// app/terms/page.tsx
+import React from "react";
 import Link from "next/link";
+
 
 export default function TermsPage() {
   return (
-    <main className="p-4 max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-center">Terms of Service</h1>
+    <main className="max-w-3xl mx-auto px-6 py-12">
+      <h1 className="text-3xl font-bold mb-6">Terms of Service</h1>
 
-      <p>
-        Welcome to <strong>Freetlo.com</strong> – a free online platform that
-        provides tools for downloading videos, cropping images, and creating
-        PDFs. By using this website, you agree to the following terms and
-        conditions.
-      </p>
+      <section className="space-y-4 text-gray-700 leading-relaxed">
+        <p>
+          By accessing and using Freetlo.com, you agree to the following terms
+          and conditions. Please read them carefully.
+        </p>
 
-      <h2 className="text-xl font-bold mt-4">Eligibility & Use</h2>
-      <ul className="list-disc list-inside">
-        <li>You must be at least 18 years old to use this service.</li>
-        <li>Our services are free for personal, non-commercial use.</li>
-        <li>
-          You agree not to misuse the tools or use them for illegal purposes.
-        </li>
-      </ul>
+        <h2 className="text-xl font-semibold mt-6">Use of Services</h2>
+        <p>
+          Freetlo provides free online PDF tools for personal and educational
+          use. You may not use our services for unlawful purposes, abuse the
+          system, or interfere with the website’s normal operation.
+        </p>
 
-      <h2 className="text-xl font-bold mt-4">Intellectual Property</h2>
-      <p>
-        Freetlo.com does not own or host any videos, images, or PDFs. All
-        content remains the property of the original creators. You are
-        responsible for ensuring your use complies with copyright and
-        intellectual property laws in your country.
-      </p>
+        <h2 className="text-xl font-semibold mt-6">Intellectual Property</h2>
+        <p>
+          All content, design, and functionality on Freetlo.com are the property
+          of Freetlo and may not be copied or reproduced without permission.
+        </p>
 
-      <h2 className="text-xl font-bold mt-4">Limitation of Liability</h2>
-      <p>
-        Freetlo.com is offered as a free tool. We make no guarantees regarding
-        availability, accuracy, or reliability. We are not responsible for any
-        damages, data loss, or legal issues that may arise from the use of this
-        site.
-      </p>
+        <h2 className="text-xl font-semibold mt-6">Disclaimer of Liability</h2>
+        <p>
+          Freetlo.com is provided “as is” without warranties of any kind. We are
+          not responsible for any data loss, errors, or damages resulting from
+          the use of our tools or services.
+        </p>
 
-      <h2 className="text-xl font-bold mt-4">Changes to Terms</h2>
-      <p>
-        We may update these terms at any time without prior notice. It is your
-        responsibility to review this page regularly for updates.
-      </p>
+        <h2 className="text-xl font-semibold mt-6">Changes to Terms</h2>
+        <p>
+          We may update these Terms of Service from time to time. Continued use
+          of the website means you accept any changes.
+        </p>
 
-      <h2 className="text-xl font-bold mt-4">Contact</h2>
-      <p>
-        If you have questions about these Terms, please visit our{" "}
-        <Link href="/contact" className="underline text-blue-600">
-          Contact page
-        </Link>
-        .
-      </p>
-
-      {/* Back to Home Button */}
+        <p className="mt-6">
+          If you have questions, please{" "}
+          <a href="/contact" className="text-blue-600 hover:underline">
+            contact us
+          </a>
+          .
+        </p>
+      </section>
+       {/* Back to Home Button */}
       <section className="text-center mt-6">
         <Link
           href="/"
@@ -63,6 +57,7 @@ export default function TermsPage() {
           Back to Home
         </Link>
       </section>
+      
     </main>
   );
 }

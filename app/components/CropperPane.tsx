@@ -169,7 +169,7 @@ export default function CropperPane() {
   return (
     <div className=" space-y-6 border rounded shadow bg-white max-w-5xl mx-auto">
       {/* Upload */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 p-4">
         <label className="text-sm font-medium">Upload Image</label>
         <input
           type="file"

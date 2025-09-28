@@ -41,21 +41,22 @@ export default function PdfMakerPane() {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 border rounded bg-white shadow space-x-4">
+   <div className="flex flex-wrap items-center justify-between gap-4 p-4 border rounded bg-white shadow">
       <input
         type="file"
         accept="image/*"
         multiple
         onChange={handleFiles}
-        className="flex-grow text-sm file:bg-blue-50 file:px-4 file:py-2 file:rounded file:border file:border-blue-300 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+        className="w-full sm:flex-grow text-sm file:bg-blue-50 file:px-4 file:py-2 file:rounded file:border file:border-blue-300 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
       />
       <button
         onClick={createPdf}
-        className="px-4 py-2 bg-blue-600 text-white rounded whitespace-nowrap"
+        className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded whitespace-nowrap"
       >
         Create PDF
       </button>
     </div>
+
 
   );
 }

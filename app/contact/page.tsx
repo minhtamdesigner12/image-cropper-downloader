@@ -9,8 +9,7 @@ export default function ContactPage() {
 
       <p>
         Have a question, feedback, or need support with{" "}
-        <strong>Freetlo.com</strong>? You can reach us anytime by email or by
-        filling out the form below.
+        <strong>Freetlo.com</strong>? You can reach us anytime by email.
       </p>
 
       <h2 className="text-xl font-bold mt-4">Email</h2>
@@ -20,57 +19,6 @@ export default function ContactPage() {
           hi@freetlo.com
         </a>
       </p>
-
-      <h2 className="text-xl font-bold mt-4">Contact Form</h2>
-      <form
-        action="https://formspree.io/f/mandkaep" // 🔹 replace with your Formspree endpoint
-        method="POST"
-        className="space-y-4"
-      >
-        <div>
-          <label className="block text-sm font-medium">Name</label>
-          <input
-            type="text"
-            name="name"
-            required
-            className="mt-1 block w-full border rounded px-3 py-2"
-            placeholder="Your name"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Email</label>
-          <input
-            type="email"
-            name="_replyto"
-            required
-            className="mt-1 block w-full border rounded px-3 py-2"
-            placeholder="you@example.com"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Message</label>
-          <textarea
-            name="message"
-            required
-            className="mt-1 block w-full border rounded px-3 py-2"
-            rows={4}
-            placeholder="Write your message..."
-          />
-        </div>
-
-        {/* Hidden field to redirect after submit (optional) */}
-        <input type="hidden" name="_subject" value="New message from Freetlo.com" />
-        <input type="hidden" name="_next" value="/contact?success=true" />
-
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
-        >
-          Send Message
-        </button>
-      </form>
 
       <h2 className="text-xl font-bold mt-4">Support</h2>
       <p>
