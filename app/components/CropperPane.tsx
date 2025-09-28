@@ -18,9 +18,9 @@ export default function CropperPane() {
 
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  const [exportWidth, setExportWidth] = useState<number>(800);
+  const [exportWidth, setExportWidth] = useState<number>(400);
   const [exportHeight, setExportHeight] = useState<number>(() =>
-    Math.round(800 / (3 / 4))
+    Math.round(400 / (3 / 4))
   );
 
   // Helper: compute centered crop
@@ -81,8 +81,8 @@ export default function CropperPane() {
     setCrop(undefined);
     setCompletedCrop(null);
     setAspect(3 / 4);
-    setExportWidth(800);
-    setExportHeight(Math.round(800 / (3 / 4)));
+    setExportWidth(400);
+    setExportHeight(Math.round(400 / (3 / 4)));
   };
 
   // Image load → recenter crop
@@ -154,7 +154,7 @@ export default function CropperPane() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "cropped.png";
+      a.download = "freetlo.com cropped.png";
       a.click();
       URL.revokeObjectURL(url);
     }, "image/png");
@@ -262,7 +262,7 @@ export default function CropperPane() {
 
           <hr className="border-gray-300" />
 
-          <div className="flex justify-center">
+          <div className="flex justify-center pb-8">
             <button
               onClick={downloadCropped}
               className="px-6 py-3 rounded bg-green-600 text-white font-semibold shadow hover:bg-green-700"
