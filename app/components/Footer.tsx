@@ -12,8 +12,11 @@ export default function Footer() {
         <Link href="/terms" className="underline hover:text-blue-500">
           Terms of Service
         </Link>
-        <Link href="/" className="underline hover:text-blue-500">
-          Image Cropper & PDF Tools
+        <Link href="/privacy" className="underline hover:text-blue-500">
+          Privacy Policy
+        </Link>
+        <Link href="/contact" className="underline hover:text-blue-500">
+          Contact
         </Link>
       </div>
       <p>© 2025 Freetlo.com. All rights reserved.</p>

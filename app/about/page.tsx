@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Ad from "../components/Ad";
 
 export default function AboutPage() {
   return (
@@ -10,36 +9,59 @@ export default function AboutPage() {
       <section>
         <h1 className="text-2xl font-bold text-center">About Freetlo.com</h1>
         <p className="mt-4">
-          <strong>Freetlo.com</strong> is a <strong>free online tool</strong> designed to help users:
+          <strong>Freetlo.com</strong> was created to provide free, simple, and
+          effective online tools for everyday digital tasks. We noticed that
+          many sites charge fees or hide features behind subscriptions, so our
+          goal is to make useful tools accessible to everyone.
+        </p>
+        <p className="mt-2">
+          On Freetlo.com you can:
         </p>
         <ul className="list-disc list-inside mt-2">
-          <li>Download videos</li>
-          <li>Crop images</li>
-          <li>Create PDFs from images</li>
+          <li>Download videos from popular platforms (for personal use only)</li>
+          <li>Crop images with preset ratios or custom dimensions</li>
+          <li>Create and combine PDFs from images</li>
         </ul>
         <p className="mt-2">
-          Our goal is simply to provide a free service to support users. There are no hidden fees or subscriptions.
+          We are committed to offering free tools without hidden costs, so you
+          can complete tasks quickly without barriers.
         </p>
         <p className="text-sm text-gray-500 mt-2">
-          Disclaimer: Freetlo.com is not affiliated with Facebook, Meta Platforms, Inc., or any other brands. Use responsibly and at your own risk.
+          Disclaimer: Freetlo.com is not affiliated with Facebook, Meta
+          Platforms, Inc., or any other brands. All trademarks and copyrights
+          belong to their respective owners. Users are responsible for using the
+          tools in compliance with copyright and intellectual property laws.
         </p>
       </section>
 
-      {/* Optional Ad */}
-      <Ad slot="1234567894" className="my-6" />
+      {/* Mission Section */}
+      <section>
+        <h2 className="text-xl font-bold">Our Mission</h2>
+        <p className="mt-2">
+          Technology should be easy. Our mission is to help people work with
+          media files quickly, whether you’re a student making a presentation, a
+          professional preparing documents, or just someone editing photos for
+          social media. Freetlo.com is here to save you time.
+        </p>
+      </section>
 
-      {/* Donate / Support Section */}
+      {/* Support / Donate Section */}
       <section>
         <h2 className="text-xl font-bold">Support / Donate</h2>
         <p className="mt-2">
-          Supporting <strong>Freetlo.com</strong> helps us maintain and improve the platform:
+          Supporting <strong>Freetlo.com</strong> helps us maintain and improve
+          the platform:
         </p>
         <ul className="list-disc list-inside mt-2">
           <li>Website hosting and maintenance</li>
+          <li>Developing new tools and improving existing ones</li>
         </ul>
         <p className="mt-2">
           PayPal donations accepted at:{" "}
-          <a href="https://www.paypal.com/donate/?business=minhtamdesign@gmail.com" className="underline text-blue-600">
+          <a
+            href="https://www.paypal.com/donate/?business=minhtamdesign@gmail.com"
+            className="underline text-blue-600"
+          >
             minhtamdesign@gmail.com
           </a>
         </p>

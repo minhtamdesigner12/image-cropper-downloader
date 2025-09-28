@@ -83,7 +83,7 @@ export default function DownloaderPane() {
         />
         <button
           onClick={handlePaste}
-          className="px-4 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center"
+          className="px-4 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 flex items-center justify-center border-blue-300"
           disabled={loading}
         >
           📋 Paste
@@ -99,10 +99,10 @@ export default function DownloaderPane() {
         {loading ? "Downloading... please wait" : "⬇️ Download Video"}
       </button>
 
-      {/* Helpful note */}
+      {/* Helpful note 
       <p className="text-xs text-gray-500 mt-2">
         ⚠️ YouTube downloads are not supported. Facebook may require cookies.
-      </p>
+      </p>*/}
     </div>
   );
 }
