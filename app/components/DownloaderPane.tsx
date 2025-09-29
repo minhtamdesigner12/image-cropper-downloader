@@ -96,13 +96,47 @@ export default function DownloaderPane() {
         className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center justify-center"
         disabled={loading}
       >
-        {loading ? "Downloading... please wait" : "⬇️ Download Video"}
+        {loading ? (
+          <span className="flex items-center gap-2">
+            {/* ✅ Add spinning loader icon here */}
+            <svg
+              className="animate-spin h-5 w-5 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              ></path>
+            </svg>
+            Downloading... please wait
+          </span>
+        ) : (
+          "⬇️ Download Video"
+        )}
       </button>
 
-      {/* Helpful note 
       <p className="text-xs text-gray-500 mt-2">
-        ⚠️ YouTube downloads are not supported. Facebook may require cookies.
-      </p>*/}
+        🔄 Refresh the page to download another video; if you see an error, reload and re-paste the link.
+      </p>
+
+       {/* Optional: progress bar under button */}
+      {loading && (
+        <div className="w-full h-1 bg-gray-200 rounded mt-2 overflow-hidden">
+          <div className="w-1/3 h-full bg-green-500 animate-pulse"></div>
+        </div>
+      )}
+
     </div>
   );
 }

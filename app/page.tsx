@@ -75,10 +75,6 @@ export default function Page() {
             copyright laws — only download content you have the right to use.
           </p>
           <DownloaderPane />
-          <p className="mt-2 text-sm text-gray-500">
-            🔄 To download another video, refresh the page and paste the new
-            link.
-          </p>
         </article>
 
         {/* 🔹 Ad after first tool */}
