@@ -83,76 +83,135 @@ app.get("/ping",(_,res)=>res.json({status:"ok",message:"pong"}));
 // ----------------------------
 // Download route
 // ----------------------------
-app.post("/api/download", async (req,res)=>{
-    let { url } = req.body;
-    if(!url) return res.status(400).json({error:"No URL provided"});
-    console.log("📥 Raw request body:",req.body);
+// ----------------------------
+// Download route with fast failure detection and optional streaming
+// ----------------------------
+app.post("/api/download", async (req, res) => {
+  let { url } = req.body;
 
-    const platformOptions = getPlatformOptions(url);
-    if(!platformOptions) return res.status(403).json({error:"Unsupported platform"});
-    if(url.includes("facebook.com") && !hasCookies) return res.status(403).json({error:"Facebook downloads require cookies.txt"});
+  // Step 0: Validate URL
+  if (!url) return res.status(400).json({ error: "Please provide a video URL." });
+  console.log("📥 Download request:", url);
 
-    const {referer,ua} = platformOptions;
-    console.log("🎬 Starting download for:",url);
+  // Step 1: Check if platform is supported and set headers
+  const platformOptions = getPlatformOptions(url);
+  if (!platformOptions) return res.status(403).json({ error: "Unsupported platform." });
+  if (url.includes("facebook.com") && !hasCookies) {
+    return res.status(403).json({ error: "Facebook downloads require cookies.txt." });
+  }
+  const { referer, ua } = platformOptions;
 
-    const tmpFileTemplate = path.join("/tmp",`tmp_${Date.now()}.%(ext)s`);
-    let baseFileName = "freetlo.com-video";
-    let fileName = `${baseFileName}-${shortId()}.mp4`;
+  // Step 2: Metadata check (--simulate) to fail fast if video is unavailable
+  try {
+    const testProc = spawn(ytdlpPath, [
+      "--no-playlist",
+      "--simulate",
+      "--quiet",
+      "--user-agent", ua,
+      "--referer", referer,
+      ...(hasCookies ? ["--cookies", cookiesFile] : []),
+      url
+    ]);
+    const exitCode = await new Promise(resolve => testProc.on("close", resolve));
+    if (exitCode !== 0) {
+      return res.status(400).json({ error: "Video cannot be downloaded (private, restricted, or unavailable)." });
+    }
+  } catch {
+    return res.status(400).json({ error: "Video cannot be downloaded." });
+  }
 
-    // Step1: Metadata
-    try{
-        const metaProc = spawn(ytdlpPath, ["--dump-json","--no-playlist","--user-agent",ua,"--referer",referer,...(hasCookies?["--cookies",cookiesFile]:[]),url]);
-        let jsonOut="";
-        for await(const chunk of metaProc.stdout) jsonOut+=chunk.toString();
-        await new Promise(r=>metaProc.on("close",r));
-        if(jsonOut){
-            const meta=JSON.parse(jsonOut);
-            if(meta?.title){
-                baseFileName="freetlo.com-"+meta.title.replace(/[^a-z0-9_\-]+/gi,"_").substring(0,80);
-                fileName=`${baseFileName}-${shortId()}.mp4`;
-            }
-        }
-    }catch{ console.warn("⚠️ Metadata fetch failed, using default filename:",fileName); }
+  // Step 3: Generate filename using metadata
+  let baseFileName = "freetlo.com-video";
+  let fileName = `${baseFileName}-${shortId()}.mp4`;
+  try {
+    const metaProc = spawn(ytdlpPath, [
+      "--dump-json",
+      "--no-playlist",
+      "--user-agent", ua,
+      "--referer", referer,
+      ...(hasCookies ? ["--cookies", cookiesFile] : []),
+      url
+    ]);
+    let jsonOut = "";
+    for await (const chunk of metaProc.stdout) jsonOut += chunk.toString();
+    await new Promise(r => metaProc.on("close", r));
+    if (jsonOut) {
+      const meta = JSON.parse(jsonOut);
+      if (meta?.title) {
+        baseFileName = "freetlo.com-" + meta.title.replace(/[^a-z0-9_\-]+/gi, "_").substring(0, 80);
+        fileName = `${baseFileName}-${shortId()}.mp4`;
+      }
+    }
+  } catch {
+    console.warn("⚠️ Metadata fetch failed, using default filename:", fileName);
+  }
 
-    // Step2: Download
-    const args=[
-        "-f","b[ext=mp4]",
-        "--merge-output-format","mp4",
-        "--no-playlist",
-        "--ffmpeg-location", ffmpegPath+"/ffmpeg",
-        "--no-check-certificate",
-        "--rm-cache-dir",
-        "--user-agent",ua,
-        "--referer",referer,
-        ...(hasCookies?["--cookies",cookiesFile]:[]),
-        url,
-        "-o", tmpFileTemplate
-    ];
+  // Step 4: Optionally choose streaming vs temp file download
+  const tmpFileTemplate = path.join("/tmp", `tmp_${Date.now()}.%(ext)s`);
+  const args = [
+    "-f", "b[ext=mp4]",
+    "--merge-output-format", "mp4",
+    "--no-playlist",
+    "--ffmpeg-location", ffmpegPath + "/ffmpeg",
+    "--no-check-certificate",
+    "--rm-cache-dir",
+    "--user-agent", ua,
+    "--referer", referer,
+    ...(hasCookies ? ["--cookies", cookiesFile] : []),
+    url,
+    "-o", tmpFileTemplate  // could also use "-" for streaming directly
+  ];
 
-    console.log("📥 Running yt-dlp:", ytdlpPath,args.join(" "));
-    const proc = spawn(ytdlpPath,args);
-    proc.stdout.on("data",d=>console.log("▶ yt-dlp:",d.toString().trim()));
-    proc.stderr.on("data",d=>console.error("⚠️ yt-dlp:",d.toString().trim()));
+  console.log("📥 Running yt-dlp:", args.join(" "));
+  const proc = spawn(ytdlpPath, args);
 
-    proc.on("close",(code)=>{
-        if(code!==0){
-            console.error("❌ yt-dlp exited with code:",code);
-            if(!res.headersSent) return res.status(500).json({error:"Cannot download this video. It may be private, restricted, or unavailable."});
-            return;
-        }
-        const files = fs.readdirSync("/tmp");
-        const base = path.basename(tmpFileTemplate).split(".")[0];
-        const outputFile = files.find(f=>f.startsWith(base));
-        if(!outputFile) return res.status(500).json({error:"Video file not created"});
+  // Step 5: Logging output (for debugging)
+  proc.stdout.on("data", d => console.log("▶ yt-dlp:", d.toString().trim()));
+  proc.stderr.on("data", d => console.error("⚠️ yt-dlp:", d.toString().trim()));
 
-        const finalFile = path.join("/tmp",outputFile);
-        res.setHeader("Content-Disposition",`attachment; filename="${encodeURIComponent(fileName)}"`);
-        res.setHeader("Content-Type","video/mp4");
-        const filestream = fs.createReadStream(finalFile);
-        filestream.pipe(res);
-        filestream.on("end",()=>fs.unlink(finalFile,()=>{}));
-    });
+  // Step 6: Handle download completion
+  proc.on("close", code => {
+    if (code !== 0) {
+      console.error("❌ yt-dlp exited with code:", code);
+      if (!res.headersSent) {
+        return res.status(500).json({ error: "Cannot download this video. It may be private, restricted, or unavailable." });
+      }
+      return;
+    }
+
+    try {
+      // Step 6a: Find downloaded file
+      const files = fs.readdirSync("/tmp");
+      const base = path.basename(tmpFileTemplate).split(".")[0];
+      const outputFile = files.find(f => f.startsWith(base));
+      if (!outputFile) return res.status(500).json({ error: "Video file not created." });
+
+      const finalFile = path.join("/tmp", outputFile);
+
+      // Step 6b: Stream file to client
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileName)}"`);
+      res.setHeader("Content-Type", "video/mp4");
+      const filestream = fs.createReadStream(finalFile);
+      filestream.pipe(res);
+
+      // Step 6c: Cleanup temp file
+      filestream.on("end", () => {
+        fs.unlink(finalFile, () => console.log("🧹 Temporary file removed:", outputFile));
+      });
+
+      // Step 6d: Handle stream errors
+      filestream.on("error", err => {
+        console.error("⚠️ Stream error:", err);
+        if (!res.headersSent) res.status(500).json({ error: "Error reading video file." });
+      });
+
+    } catch (err) {
+      console.error("⚠️ File handling error:", err);
+      if (!res.headersSent) res.status(500).json({ error: "Unexpected error while preparing video." });
+    }
+  });
 });
+
 
 // ----------------------------
 // yt-dlp version
