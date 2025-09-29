@@ -38,7 +38,7 @@ export default function Page() {
         `}
       </Script>
 
-      <main className="p-4 max-w-5xl mx-auto space-y-12">
+      <main className="p-4 w-full max-w-5xl mx-auto space-y-12 overflow-x-hidden">
         {/* 🔹 Header */}
         <header className="flex items-center gap-3 mb-8">
           <Image
@@ -48,7 +48,7 @@ export default function Page() {
             height={0}
             className="h-8 w-auto"
           />
-          <h1 className="text-lg font-bold">
+          <h1 className="text-sm">
             Free Tools: Video Downloader, Image Cropper & PDF Maker
           </h1>
         </header>

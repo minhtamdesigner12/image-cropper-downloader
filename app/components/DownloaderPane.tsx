@@ -72,7 +72,7 @@ export default function DownloaderPane() {
   return (
     <div className="space-y-3 p-4 border rounded bg-white shadow">
       {/* Input + Paste */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <input
           type="text"
           placeholder="Paste video URL (Facebook, TikTok, Instagram, X.com)"
@@ -83,7 +83,7 @@ export default function DownloaderPane() {
         />
         <button
           onClick={handlePaste}
-          className="px-4 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 flex items-center justify-center border-blue-300"
+            className="shrink-0 px-4 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 flex items-center justify-center border-blue-300"
           disabled={loading}
         >
           📋 Paste
