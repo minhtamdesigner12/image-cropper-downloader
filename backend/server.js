@@ -81,86 +81,78 @@ async function ensureBinaries(){
 app.get("/ping",(_,res)=>res.json({status:"ok",message:"pong"}));
 
 // ----------------------------
+// Download route
 // ----------------------------
-// Download route (streaming + friendly errors)
-// ----------------------------
-app.post("/api/download", async (req, res) => {
+app.post("/api/download", async (req,res)=>{
     let { url } = req.body;
-    if (!url) 
-        return res.status(400).json({ error: "Please provide a video URL to download." });
-
-    console.log("📥 Raw request body:", req.body);
+    if(!url) return res.status(400).json({error:"No URL provided"});
+    console.log("📥 Raw request body:",req.body);
 
     const platformOptions = getPlatformOptions(url);
-    if (!platformOptions) 
-        return res.status(403).json({ error: "Sorry, this platform is not supported yet." });
+    if(!platformOptions) return res.status(403).json({error:"Unsupported platform"});
+    if(url.includes("facebook.com") && !hasCookies) return res.status(403).json({error:"Facebook downloads require cookies.txt"});
 
-    if (url.includes("facebook.com") && !hasCookies) 
-        return res.status(403).json({ error: "Facebook videos require a cookies.txt file to download." });
+    const {referer,ua} = platformOptions;
+    console.log("🎬 Starting download for:",url);
 
-    const { referer, ua } = platformOptions;
-    console.log("🎬 Starting download for:", url);
-
-    // Generate filename
+    const tmpFileTemplate = path.join("/tmp",`tmp_${Date.now()}.%(ext)s`);
     let baseFileName = "freetlo.com-video";
     let fileName = `${baseFileName}-${shortId()}.mp4`;
 
-    // Try fetching metadata for nicer filename
-    try {
+    // Step1: Metadata
+    try{
         const metaProc = spawn(ytdlpPath, ["--dump-json","--no-playlist","--user-agent",ua,"--referer",referer,...(hasCookies?["--cookies",cookiesFile]:[]),url]);
-        let jsonOut = "";
-        for await (const chunk of metaProc.stdout) jsonOut += chunk.toString();
-        await new Promise(r => metaProc.on("close", r));
-        if (jsonOut) {
-            const meta = JSON.parse(jsonOut);
-            if (meta?.title) {
-                baseFileName = "freetlo.com-" + meta.title.replace(/[^a-z0-9_\-]+/gi,"_").substring(0,80);
-                fileName = `${baseFileName}-${shortId()}.mp4`;
+        let jsonOut="";
+        for await(const chunk of metaProc.stdout) jsonOut+=chunk.toString();
+        await new Promise(r=>metaProc.on("close",r));
+        if(jsonOut){
+            const meta=JSON.parse(jsonOut);
+            if(meta?.title){
+                baseFileName="freetlo.com-"+meta.title.replace(/[^a-z0-9_\-]+/gi,"_").substring(0,80);
+                fileName=`${baseFileName}-${shortId()}.mp4`;
             }
         }
-    } catch {
-        console.warn("⚠️ Metadata fetch failed, using default filename:", fileName);
-    }
+    }catch{ console.warn("⚠️ Metadata fetch failed, using default filename:",fileName); }
 
-    // Step2: Stream download directly
-    try {
-        const args = [
-            "-f", "b[ext=mp4]",
-            "--merge-output-format", "mp4",
-            "--no-playlist",
-            "--ffmpeg-location", ffmpegPath + "/ffmpeg",
-            "--no-check-certificate",
-            "--rm-cache-dir",
-            "--user-agent", ua,
-            "--referer", referer,
-            ...(hasCookies ? ["--cookies", cookiesFile] : []),
-            url,
-            "-o", "-" // <- stream to stdout
-        ];
+    // Step2: Download
+    const args=[
+        "-f","b[ext=mp4]",
+        "--merge-output-format","mp4",
+        "--no-playlist",
+        "--ffmpeg-location", ffmpegPath+"/ffmpeg",
+        "--no-check-certificate",
+        "--rm-cache-dir",
+        "--user-agent",ua,
+        "--referer",referer,
+        ...(hasCookies?["--cookies",cookiesFile]:[]),
+        url,
+        "-o", tmpFileTemplate
+    ];
 
-        console.log("📥 Running yt-dlp (streaming):", ytdlpPath, args.join(" "));
+    console.log("📥 Running yt-dlp:", ytdlpPath,args.join(" "));
+    const proc = spawn(ytdlpPath,args);
+    proc.stdout.on("data",d=>console.log("▶ yt-dlp:",d.toString().trim()));
+    proc.stderr.on("data",d=>console.error("⚠️ yt-dlp:",d.toString().trim()));
 
-        const proc = spawn(ytdlpPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+    proc.on("close",(code)=>{
+        if(code!==0){
+            console.error("❌ yt-dlp exited with code:",code);
+            if(!res.headersSent) return res.status(500).json({error:"Cannot download this video. It may be private, restricted, or unavailable."});
+            return;
+        }
+        const files = fs.readdirSync("/tmp");
+        const base = path.basename(tmpFileTemplate).split(".")[0];
+        const outputFile = files.find(f=>f.startsWith(base));
+        if(!outputFile) return res.status(500).json({error:"Video file not created"});
 
-        res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileName)}"`);
-        res.setHeader("Content-Type", "video/mp4");
-
-        proc.stdout.pipe(res);
-
-        proc.stderr.on("data", d => console.error("⚠️ yt-dlp:", d.toString().trim()));
-
-        proc.on("close", code => {
-            if (code !== 0 && !res.headersSent) {
-                console.error("❌ yt-dlp exited with code:", code);
-                res.status(500).json({ error: "Sorry, this video cannot be downloaded. It might be private, restricted, or unavailable." });
-            }
-        });
-    } catch (err) {
-        console.error("❌ Streaming download error:", err);
-        if (!res.headersSent) res.status(500).json({ error: "Sorry, this video cannot be downloaded. It might be private, restricted, or unavailable." });
-    }
+        const finalFile = path.join("/tmp",outputFile);
+        res.setHeader("Content-Disposition",`attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.setHeader("Content-Type","video/mp4");
+        const filestream = fs.createReadStream(finalFile);
+        filestream.pipe(res);
+        filestream.on("end",()=>fs.unlink(finalFile,()=>{}));
+    });
 });
-
 
 // ----------------------------
 // yt-dlp version
