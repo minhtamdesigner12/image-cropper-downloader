@@ -1,45 +1,57 @@
-// app/about/page.tsx
-import React from "react";
-import Link from "next/link";
+"use client";
 
+import Link from "next/link";
 
 export default function AboutPage() {
   return (
-    <main className="max-w-3xl mx-auto px-6 py-12">
-      <h1 className="text-3xl font-bold mb-6">About Freetlo</h1>
-
-      <section className="space-y-4 text-gray-700 leading-relaxed">
-        <p>
-          Freetlo.com was created to provide free, reliable, and easy-to-use
-          online tools for students, teachers, and professionals. Our mission is
-          to make digital tasks—like working with PDF files—accessible to
-          everyone without requiring expensive software or complicated
-          installations.
+    <main className="p-4 max-w-3xl mx-auto space-y-8">
+      <section>
+        <h1 className="text-2xl font-bold text-center">About Freetlo.com</h1>
+        <p className="mt-4">
+          <strong>Freetlo.com</strong> was created with one goal in mind: to make
+          powerful yet simple online tools accessible to everyone. Many websites
+          charge hidden fees, require logins, or overwhelm users with ads. Our
+          mission is to provide clean, free, and useful tools for everyday
+          digital tasks.
         </p>
-
-        <p>
-          Whether you need to merge, split, compress, or convert PDFs, Freetlo
-          offers a fast and secure solution directly from your browser. We
-          believe that technology should empower people, and that’s why all of
-          our tools are completely free to use.
-        </p>
-
-        <p>
-          We are continuously improving the platform by adding new features and
-          enhancing performance, so users can focus on learning, teaching, and
-          working more efficiently.
-        </p>
-
-        <p>
-          If you have questions, suggestions, or feedback, please feel free to{" "}
-          <a href="/contact" className="text-blue-600 hover:underline">
-            contact us
-          </a>
-          . Your input helps us grow and provide better services.
+        <p className="mt-2">Here’s what you can do on Freetlo.com:</p>
+        <ul className="list-disc list-inside mt-2 space-y-1">
+          <li>Download videos from social platforms (for personal use only).</li>
+          <li>Crop and resize images with preset or custom dimensions.</li>
+          <li>Create professional PDFs from multiple images.</li>
+        </ul>
+        <p className="mt-2">
+          Our tools are designed to be lightweight, fast, and accessible from any
+          device — whether you’re on a computer, tablet, or smartphone.
         </p>
       </section>
 
-       {/* Back to Home Button */}
+      <section>
+        <h2 className="text-xl font-bold">Our Mission</h2>
+        <p className="mt-2">
+          We believe technology should make life easier, not harder. That’s why
+          Freetlo.com is built to save you time: whether you’re a student
+          working on a school project, a professional preparing documents, or
+          just someone editing photos for fun.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-bold">How We Stay Free</h2>
+        <p className="mt-2">
+          Freetlo.com is supported by non-intrusive ads. These allow us to cover
+          server costs and keep the tools available for everyone at no charge.
+          We never sell your data or require you to create an account.
+        </p>
+      </section>
+
+      <p className="text-sm text-gray-500 mt-4">
+        Disclaimer: Freetlo.com is not affiliated with Facebook, TikTok,
+        Instagram, or any other third-party platforms. All trademarks and
+        copyrights belong to their respective owners. Users are responsible for
+        complying with copyright laws.
+      </p>
+
       <section className="text-center mt-6">
         <Link
           href="/"
@@ -48,7 +60,6 @@ export default function AboutPage() {
           Back to Home
         </Link>
       </section>
-
     </main>
   );
 }

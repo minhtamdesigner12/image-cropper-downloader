@@ -1,54 +1,61 @@
-// app/terms/page.tsx
-import React from "react";
-import Link from "next/link";
+"use client";
 
+import Link from "next/link";
 
 export default function TermsPage() {
   return (
-    <main className="max-w-3xl mx-auto px-6 py-12">
-      <h1 className="text-3xl font-bold mb-6">Terms of Service</h1>
+    <main className="p-4 max-w-3xl mx-auto space-y-6">
+      <h1 className="text-2xl font-bold text-center">Terms of Service</h1>
 
-      <section className="space-y-4 text-gray-700 leading-relaxed">
-        <p>
-          By accessing and using Freetlo.com, you agree to the following terms
-          and conditions. Please read them carefully.
-        </p>
+      <p>
+        Welcome to <strong>Freetlo.com</strong>. These Terms of Service explain
+        the rules and responsibilities that apply when you use our free tools.
+        By accessing our website, you agree to follow these terms. If you do not
+        agree, please stop using our services immediately.
+      </p>
 
-        <h2 className="text-xl font-semibold mt-6">Use of Services</h2>
-        <p>
-          Freetlo provides free online PDF tools for personal and educational
-          use. You may not use our services for unlawful purposes, abuse the
-          system, or interfere with the website’s normal operation.
-        </p>
+      <h2 className="text-xl font-bold mt-4">Eligibility & Use</h2>
+      <ul className="list-disc list-inside space-y-1">
+        <li>You must be at least 18 years old to use this website.</li>
+        <li>Our services are provided for personal and non-commercial use.</li>
+        <li>
+          You may not use Freetlo.com for any illegal or harmful activity,
+          including copyright infringement or distributing malicious content.
+        </li>
+      </ul>
 
-        <h2 className="text-xl font-semibold mt-6">Intellectual Property</h2>
-        <p>
-          All content, design, and functionality on Freetlo.com are the property
-          of Freetlo and may not be copied or reproduced without permission.
-        </p>
+      <h2 className="text-xl font-bold mt-4">Intellectual Property</h2>
+      <p>
+        Freetlo.com does not host or own any videos, images, or PDFs generated
+        by users. All content remains the property of the original creators. You
+        are responsible for ensuring your use of the tools complies with
+        copyright and intellectual property laws.
+      </p>
 
-        <h2 className="text-xl font-semibold mt-6">Disclaimer of Liability</h2>
-        <p>
-          Freetlo.com is provided “as is” without warranties of any kind. We are
-          not responsible for any data loss, errors, or damages resulting from
-          the use of our tools or services.
-        </p>
+      <h2 className="text-xl font-bold mt-4">Limitation of Liability</h2>
+      <p>
+        Freetlo.com is provided as-is, without warranties. While we strive for
+        reliability, we are not responsible for service interruptions, loss of
+        data, or damages arising from the use of this website. You use our tools
+        at your own risk.
+      </p>
 
-        <h2 className="text-xl font-semibold mt-6">Changes to Terms</h2>
-        <p>
-          We may update these Terms of Service from time to time. Continued use
-          of the website means you accept any changes.
-        </p>
+      <h2 className="text-xl font-bold mt-4">Changes to Terms</h2>
+      <p>
+        We may update these Terms at any time. Updates will take effect
+        immediately once published. It is your responsibility to review this
+        page regularly.
+      </p>
 
-        <p className="mt-6">
-          If you have questions, please{" "}
-          <a href="/contact" className="text-blue-600 hover:underline">
-            contact us
-          </a>
-          .
-        </p>
-      </section>
-       {/* Back to Home Button */}
+      <h2 className="text-xl font-bold mt-4">Contact</h2>
+      <p>
+        For questions about these Terms, please visit our{" "}
+        <Link href="/contact" className="underline text-blue-600">
+          Contact page
+        </Link>{" "}
+        or email us directly.
+      </p>
+
       <section className="text-center mt-6">
         <Link
           href="/"
@@ -57,7 +64,6 @@ export default function TermsPage() {
           Back to Home
         </Link>
       </section>
-      
     </main>
   );
 }

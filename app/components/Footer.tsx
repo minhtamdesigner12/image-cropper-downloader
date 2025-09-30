@@ -9,6 +9,9 @@ export default function Footer() {
         <Link href="/about" className="underline hover:text-blue-500">
           About
         </Link>
+        <Link href="/blog" className="underline hover:text-blue-500">
+          Blog
+        </Link>
         <Link href="/terms" className="underline hover:text-blue-500">
           Terms of Service
         </Link>
